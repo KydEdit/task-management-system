@@ -1,0 +1,58 @@
+# Binaries
+*.exe
+*.exe~
+*.dll
+*.so
+*.dylib
+*.test
+*.out
+/tmp
+/bin
+/dist
+
+# Dependency directories
+/vendor
+/node_modules
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+.DS_Store
+
+# Go workspace file
+go.work
+go.work.sum
+
+# Environment variables
+.env
+.env.local
+.env.*.local
+
+# Logs
+*.log
+logs/
+
+# OS files
+Thumbs.db
+.DS_Store
+
+# Build output
+/main
+/task-manager-api
+/task-manager-api.exe
+
+# Coverage files
+*.cover
+*.out
+coverage.html
+
+# Debug files
+__debug_bin
+debug.test
+
+# Temporary files
+tmp/
+temp/
