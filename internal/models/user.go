@@ -1,17 +1,9 @@
 package models
 
 type User struct {
-	ID       int    `json:"id"`
-	Email    string `json:"email"`
-	Password string `json:"password"`
-}
-
-type UserTasks struct {
-	ID            int    `json:"id"`
-	Title         string `json:"title"`
-	Description   string `json:"description"`
-	UserEmail     string `json:"-"`
-	TaskCompleted bool   `json:"completed"`
+	ID           int
+	Email        string
+	PasswordHash string
 }
 
 type RegisterRequest struct {
@@ -27,4 +19,12 @@ type LoginRequest struct {
 type UserResponse struct {
 	ID    int    `json:"id"`
 	Email string `json:"email"`
+}
+
+type UserTasks struct {
+	ID            int    `json:"id"`
+	Title         string `json:"title"`
+	Description   string `json:"description"`
+	UserEmail     string `json:"-"`
+	TaskCompleted bool   `json:"completed"`
 }

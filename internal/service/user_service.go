@@ -19,47 +19,50 @@ func NewUserService(repo *repository.UserRepository) *UserService {
 	}
 }
 
-func (s *UserService) Register(user models.User) (models.User, error) {
+func (s *UserService) Register(user models.RegisterRequest) (models.UserResponse, error) {
+	var resp models.UserResponse
 
-	if len(user.Password) < 8 {
-		return models.User{}, errors.New("password must be at least 8 characters")
-	}
-	if len(user.Password) > 72 {
-		return models.User{}, errors.New("password too long (max 72 bytes)")
+	if len(user.Password) < 8 || len(user.Password) > 72 {
+		return models.UserResponse{}, models.ErrInvalidPassword
 	}
 
 	hashed, err := bcrypt.GenerateFromPassword([]byte(user.Password), bcrypt.DefaultCost)
 	if err != nil {
-		return models.User{}, err
+		return models.UserResponse{}, err
 	}
 	hashedPassword := string(hashed)
 
 	id, err := s.repo.RegisterUser(user.Email, hashedPassword)
 	if err != nil {
-		return models.User{}, err
+		return models.UserResponse{}, err
 	}
 
-	user.ID = id
-	return user, nil
+	resp.ID = id
+	resp.Email = user.Email
+	return resp, nil
 }
 
-func (s *UserService) Login(email, password string) (models.User, error) {
+func (s *UserService) Login(email, password string) (models.UserResponse, error) {
+	var resp models.UserResponse
+
 	user, err := s.repo.GetByEmail(email)
 	if err != nil {
 		if errors.Is(err, models.ErrUserNotFound) {
-			return models.User{}, models.ErrInvalidCredentials
+			return models.UserResponse{}, models.ErrInvalidCredentials
 		}
 
-		return models.User{}, fmt.Errorf("get user: %w", err)
+		return models.UserResponse{}, fmt.Errorf("get user: %w", err)
 	}
 
 	err = bcrypt.CompareHashAndPassword(
-		[]byte(user.Password),
+		[]byte(user.PasswordHash),
 		[]byte(password),
 	)
 	if err != nil {
-		return models.User{}, models.ErrInvalidCredentials
+		return models.UserResponse{}, models.ErrInvalidCredentials
 	}
 
-	return user, nil
+	resp.ID = user.ID
+	resp.Email = user.Email
+	return resp, nil
 }

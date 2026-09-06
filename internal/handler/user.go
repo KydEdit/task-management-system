@@ -3,7 +3,6 @@ package handler
 import (
 	"encoding/json"
 	"errors"
-	"log"
 	"net/http"
 	"strconv"
 	"task-manager-api/internal/models"
@@ -41,7 +40,7 @@ type DeleteResponse struct {
 }
 
 func (h *UserHandler) RegisterUser(w http.ResponseWriter, r *http.Request) {
-	var user models.User
+	var user models.RegisterRequest
 
 	err := json.NewDecoder(r.Body).Decode(&user)
 	if err != nil {
@@ -51,7 +50,14 @@ func (h *UserHandler) RegisterUser(w http.ResponseWriter, r *http.Request) {
 
 	createdUser, err := h.serviceU.Register(user)
 	if err != nil {
-		log.Printf("Register error: %v", err)
+		if errors.Is(err, models.ErrInvalidPassword) {
+			http.Error(w, "Invalid password", http.StatusBadRequest)
+			return
+		}
+		if errors.Is(err, models.ErrUserAlreadyExists) {
+			http.Error(w, "Duplicate email", http.StatusConflict)
+			return
+		}
 		http.Error(w, "Could not create user", http.StatusInternalServerError)
 		return
 	}
@@ -62,7 +68,7 @@ func (h *UserHandler) RegisterUser(w http.ResponseWriter, r *http.Request) {
 
 func (h *UserHandler) LoginUser(w http.ResponseWriter, r *http.Request) {
 
-	var user models.User
+	var user models.LoginRequest
 
 	err := json.NewDecoder(r.Body).Decode(&user)
 	if err != nil {

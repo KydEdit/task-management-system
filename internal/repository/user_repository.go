@@ -7,6 +7,7 @@ import (
 	"task-manager-api/internal/models"
 
 	"github.com/jackc/pgx/v5"
+	"github.com/jackc/pgx/v5/pgconn"
 )
 
 type UserRepository struct {
@@ -21,6 +22,7 @@ func NewUserRepository(conn *pgx.Conn) *UserRepository {
 
 func (r *UserRepository) RegisterUser(email, password string) (int, error) {
 	var id int
+	var pgErr *pgconn.PgError
 
 	err := r.conn.QueryRow(
 		context.Background(),
@@ -34,6 +36,12 @@ func (r *UserRepository) RegisterUser(email, password string) (int, error) {
 	).Scan(&id)
 
 	if err != nil {
+		if errors.As(err, &pgErr) {
+			if pgErr.Code == "23505" && pgErr.ConstraintName == "users_email_key" {
+				return 0, models.ErrUserAlreadyExists
+			}
+		}
+
 		return 0, err
 	}
 
@@ -54,7 +62,7 @@ func (r *UserRepository) GetByEmail(email string) (models.User, error) {
 	).Scan(
 		&user.ID,
 		&user.Email,
-		&user.Password,
+		&user.PasswordHash,
 	)
 
 	if err != nil {
