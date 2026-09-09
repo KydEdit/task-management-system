@@ -4,6 +4,7 @@ type User struct {
 	ID           int
 	Email        string
 	PasswordHash string
+	CompanyID    int
 }
 
 type RegisterRequest struct {
@@ -17,8 +18,9 @@ type LoginRequest struct {
 }
 
 type UserResponse struct {
-	ID    int    `json:"id"`
-	Email string `json:"email"`
+	ID        int    `json:"id"`
+	Email     string `json:"email"`
+	CompanyID int    `json:"company_id"`
 }
 
 type UserTasks struct {

@@ -7,5 +7,5 @@ var (
 	ErrUserNotFound       = errors.New("user not found")
 	ErrTaskNotFound       = errors.New("task not found or access denied")
 	ErrInvalidPassword    = errors.New("invalid password")
-	ErrUserAlreadyExists  = errors.New("duplicate")
+	ErrUserAlreadyExists  = errors.New("user with this email already exists")
 )

@@ -118,10 +118,26 @@ func (h *UserHandler) GetMe(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "Unauthorized", http.StatusUnauthorized)
 		return
 	}
+	meInfo, err := h.serviceU.Me(email)
+	if err != nil {
+		if errors.Is(err, models.ErrUserNotFound) {
+			http.Error(
+				w,
+				"Invalid email or password",
+				http.StatusUnauthorized,
+			)
+			return
+		}
 
-	json.NewEncoder(w).Encode(map[string]string{
-		"email": email,
-	})
+		http.Error(
+			w,
+			"Internal server error",
+			http.StatusInternalServerError,
+		)
+		return
+	}
+
+	json.NewEncoder(w).Encode(meInfo)
 }
 
 func (h *TaskHandler) CreateTask(w http.ResponseWriter, r *http.Request) {

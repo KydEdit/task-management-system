@@ -66,3 +66,21 @@ func (s *UserService) Login(email, password string) (models.UserResponse, error)
 	resp.Email = user.Email
 	return resp, nil
 }
+
+func (s *UserService) Me(email string) (models.UserResponse, error) {
+	var resp models.UserResponse
+
+	user, err := s.repo.GetByEmail(email)
+	if err != nil {
+		if errors.Is(err, models.ErrUserNotFound) {
+			return models.UserResponse{}, models.ErrUserNotFound
+		}
+
+		return models.UserResponse{}, fmt.Errorf("get user: %w", err)
+	}
+
+	resp.ID = user.ID
+	resp.Email = user.Email
+	resp.CompanyID = user.CompanyID
+	return resp, nil
+}

@@ -54,7 +54,7 @@ func (r *UserRepository) GetByEmail(email string) (models.User, error) {
 	err := r.conn.QueryRow(
 		context.Background(),
 		`
-		SELECT id, user_email, password
+		SELECT id, user_email, password, company_id
 		FROM users
 		WHERE user_email = $1
 		`,
@@ -63,6 +63,7 @@ func (r *UserRepository) GetByEmail(email string) (models.User, error) {
 		&user.ID,
 		&user.Email,
 		&user.PasswordHash,
+		&user.CompanyID,
 	)
 
 	if err != nil {
