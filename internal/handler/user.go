@@ -50,6 +50,14 @@ func (h *UserHandler) RegisterUser(w http.ResponseWriter, r *http.Request) {
 
 	createdUser, err := h.serviceU.Register(user)
 	if err != nil {
+		if errors.Is(err, models.ErrInvalidEmail) {
+			http.Error(w, "Invalid email", http.StatusBadRequest)
+			return
+		}
+		if errors.Is(err, models.ErrInvalidCompanyID) {
+			http.Error(w, "Invalid company", http.StatusBadRequest)
+			return
+		}
 		if errors.Is(err, models.ErrInvalidPassword) {
 			http.Error(w, "Invalid password", http.StatusBadRequest)
 			return

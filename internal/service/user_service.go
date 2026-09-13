@@ -3,6 +3,8 @@ package service
 import (
 	"errors"
 	"fmt"
+	"net/mail"
+	"strings"
 	"task-manager-api/internal/models"
 	"task-manager-api/internal/repository"
 
@@ -24,8 +26,22 @@ func NewUserService(repo *repository.UserRepository, companyRepo *repository.Com
 func (s *UserService) Register(user models.RegisterRequest) (models.UserResponse, error) {
 	var resp models.UserResponse
 
+	email := strings.TrimSpace(user.Email)
+
+	if len(email) == 0 || len(email) > 255 {
+		return models.UserResponse{}, models.ErrInvalidEmail
+	}
+
+	if _, err := mail.ParseAddress(email); err != nil {
+		return models.UserResponse{}, models.ErrInvalidEmail
+	}
+
 	if len(user.Password) < 8 || len(user.Password) > 72 {
 		return models.UserResponse{}, models.ErrInvalidPassword
+	}
+
+	if user.CompanyID <= 0 {
+		return models.UserResponse{}, models.ErrInvalidCompanyID
 	}
 
 	if err := s.companyRepo.EnsureExists(user.CompanyID); err != nil {
@@ -38,13 +54,13 @@ func (s *UserService) Register(user models.RegisterRequest) (models.UserResponse
 	}
 	hashedPassword := string(hashed)
 
-	id, err := s.repo.RegisterUser(user.Email, hashedPassword, user.CompanyID)
+	id, err := s.repo.RegisterUser(email, hashedPassword, user.CompanyID)
 	if err != nil {
 		return models.UserResponse{}, err
 	}
 
 	resp.ID = id
-	resp.Email = user.Email
+	resp.Email = email
 	resp.CompanyID = user.CompanyID
 	return resp, nil
 }
