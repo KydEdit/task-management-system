@@ -58,10 +58,15 @@ func (h *UserHandler) RegisterUser(w http.ResponseWriter, r *http.Request) {
 			http.Error(w, "Duplicate email", http.StatusConflict)
 			return
 		}
+		if errors.Is(err, models.ErrCompanyNotFound) {
+			http.Error(w, "Company not found", http.StatusNotFound)
+			return
+		}
 		http.Error(w, "Could not create user", http.StatusInternalServerError)
 		return
 	}
 
+	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusCreated)
 	json.NewEncoder(w).Encode(createdUser)
 }
@@ -137,6 +142,7 @@ func (h *UserHandler) GetMe(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	w.WriteHeader(http.StatusOK)
 	json.NewEncoder(w).Encode(meInfo)
 }
 

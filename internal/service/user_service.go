@@ -10,12 +10,14 @@ import (
 )
 
 type UserService struct {
-	repo *repository.UserRepository
+	repo        *repository.UserRepository
+	companyRepo *repository.CompanyRepository
 }
 
-func NewUserService(repo *repository.UserRepository) *UserService {
+func NewUserService(repo *repository.UserRepository, companyRepo *repository.CompanyRepository) *UserService {
 	return &UserService{
-		repo: repo,
+		repo:        repo,
+		companyRepo: companyRepo,
 	}
 }
 
@@ -26,19 +28,24 @@ func (s *UserService) Register(user models.RegisterRequest) (models.UserResponse
 		return models.UserResponse{}, models.ErrInvalidPassword
 	}
 
+	if err := s.companyRepo.EnsureExists(user.CompanyID); err != nil {
+		return models.UserResponse{}, fmt.Errorf("validate company: %w", err)
+	}
+
 	hashed, err := bcrypt.GenerateFromPassword([]byte(user.Password), bcrypt.DefaultCost)
 	if err != nil {
 		return models.UserResponse{}, err
 	}
 	hashedPassword := string(hashed)
 
-	id, err := s.repo.RegisterUser(user.Email, hashedPassword)
+	id, err := s.repo.RegisterUser(user.Email, hashedPassword, user.CompanyID)
 	if err != nil {
 		return models.UserResponse{}, err
 	}
 
 	resp.ID = id
 	resp.Email = user.Email
+	resp.CompanyID = user.CompanyID
 	return resp, nil
 }
 

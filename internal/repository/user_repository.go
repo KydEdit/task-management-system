@@ -20,19 +20,20 @@ func NewUserRepository(conn *pgx.Conn) *UserRepository {
 	}
 }
 
-func (r *UserRepository) RegisterUser(email, password string) (int, error) {
+func (r *UserRepository) RegisterUser(email, password string, companyID int) (int, error) {
 	var id int
 	var pgErr *pgconn.PgError
 
 	err := r.conn.QueryRow(
 		context.Background(),
 		`
-		INSERT INTO users (user_email, password)
-		VALUES ($1, $2)
+		INSERT INTO users (user_email, password, company_id)
+		VALUES ($1, $2, $3)
 		RETURNING id
 		`,
 		email,
 		password,
+		companyID,
 	).Scan(&id)
 
 	if err != nil {

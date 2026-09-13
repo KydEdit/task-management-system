@@ -8,4 +8,5 @@ var (
 	ErrTaskNotFound       = errors.New("task not found or access denied")
 	ErrInvalidPassword    = errors.New("invalid password")
 	ErrUserAlreadyExists  = errors.New("user with this email already exists")
+	ErrCompanyNotFound    = errors.New("company not found")
 )

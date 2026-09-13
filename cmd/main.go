@@ -32,7 +32,8 @@ func main() {
 	// jwtManager := auth.NewJWTManager(cfg.JWTSecret)
 
 	userRepo := repository.NewUserRepository(conn)
-	userService := service.NewUserService(userRepo)
+	companyRepo := repository.NewCompanyRepository(conn)
+	userService := service.NewUserService(userRepo, companyRepo)
 	userHandler := handler.NewUserHandler(
 		userService,
 		authService,
