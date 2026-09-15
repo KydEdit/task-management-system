@@ -39,44 +39,54 @@ type DeleteResponse struct {
 	Success bool `json:"success"`
 }
 
+func writeJSON(w http.ResponseWriter, status int, data any) {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(status)
+	json.NewEncoder(w).Encode(data)
+}
+
+func writeError(w http.ResponseWriter, status int, msg string) {
+	writeJSON(w, status, map[string]string{
+		"error": msg,
+	})
+}
+
 func (h *UserHandler) RegisterUser(w http.ResponseWriter, r *http.Request) {
 	var user models.RegisterRequest
 
 	err := json.NewDecoder(r.Body).Decode(&user)
 	if err != nil {
-		http.Error(w, "Invalid request body", http.StatusBadRequest)
+		writeError(w, http.StatusBadRequest, "Invalid request body")
 		return
 	}
 
 	createdUser, err := h.serviceU.Register(user)
 	if err != nil {
 		if errors.Is(err, models.ErrInvalidEmail) {
-			http.Error(w, "Invalid email", http.StatusBadRequest)
+			writeError(w, http.StatusBadRequest, "Invalid email")
 			return
 		}
 		if errors.Is(err, models.ErrInvalidCompanyID) {
-			http.Error(w, "Invalid company", http.StatusBadRequest)
+			writeError(w, http.StatusBadRequest, "Invalid company")
 			return
 		}
 		if errors.Is(err, models.ErrInvalidPassword) {
-			http.Error(w, "Invalid password", http.StatusBadRequest)
+			writeError(w, http.StatusBadRequest, "Invalid password")
 			return
 		}
 		if errors.Is(err, models.ErrUserAlreadyExists) {
-			http.Error(w, "Duplicate email", http.StatusConflict)
+			writeError(w, http.StatusConflict, "Duplicate email")
 			return
 		}
 		if errors.Is(err, models.ErrCompanyNotFound) {
-			http.Error(w, "Company not found", http.StatusNotFound)
+			writeError(w, http.StatusNotFound, "Company not found")
 			return
 		}
-		http.Error(w, "Could not create user", http.StatusInternalServerError)
+		writeError(w, http.StatusInternalServerError, "Could not create user")
 		return
 	}
 
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(http.StatusCreated)
-	json.NewEncoder(w).Encode(createdUser)
+	writeJSON(w, http.StatusCreated, createdUser)
 }
 
 func (h *UserHandler) LoginUser(w http.ResponseWriter, r *http.Request) {
