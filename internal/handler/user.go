@@ -39,50 +39,38 @@ type DeleteResponse struct {
 	Success bool `json:"success"`
 }
 
-func writeJSON(w http.ResponseWriter, status int, data any) {
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(status)
-	json.NewEncoder(w).Encode(data)
-}
-
-func writeError(w http.ResponseWriter, status int, msg string) {
-	writeJSON(w, status, map[string]string{
-		"error": msg,
-	})
-}
-
 func (h *UserHandler) RegisterUser(w http.ResponseWriter, r *http.Request) {
 	var user models.RegisterRequest
 
 	err := json.NewDecoder(r.Body).Decode(&user)
 	if err != nil {
-		writeError(w, http.StatusBadRequest, "Invalid request body")
+		writeError(w, http.StatusBadRequest, "invalid request body")
 		return
 	}
 
 	createdUser, err := h.serviceU.Register(user)
 	if err != nil {
 		if errors.Is(err, models.ErrInvalidEmail) {
-			writeError(w, http.StatusBadRequest, "Invalid email")
+			writeError(w, http.StatusBadRequest, "invalid email")
 			return
 		}
 		if errors.Is(err, models.ErrInvalidCompanyID) {
-			writeError(w, http.StatusBadRequest, "Invalid company")
+			writeError(w, http.StatusBadRequest, "invalid company")
 			return
 		}
 		if errors.Is(err, models.ErrInvalidPassword) {
-			writeError(w, http.StatusBadRequest, "Invalid password")
+			writeError(w, http.StatusBadRequest, "invalid password")
 			return
 		}
 		if errors.Is(err, models.ErrUserAlreadyExists) {
-			writeError(w, http.StatusConflict, "Duplicate email")
+			writeError(w, http.StatusConflict, "duplicate email")
 			return
 		}
 		if errors.Is(err, models.ErrCompanyNotFound) {
-			writeError(w, http.StatusNotFound, "Company not found")
+			writeError(w, http.StatusNotFound, "company not found")
 			return
 		}
-		writeError(w, http.StatusInternalServerError, "Could not create user")
+		writeError(w, http.StatusInternalServerError, "could not create user")
 		return
 	}
 

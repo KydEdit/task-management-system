@@ -6,17 +6,16 @@ import (
 	"net/mail"
 	"strings"
 	"task-manager-api/internal/models"
-	"task-manager-api/internal/repository"
 
 	"golang.org/x/crypto/bcrypt"
 )
 
 type UserService struct {
-	repo        *repository.UserRepository
-	companyRepo *repository.CompanyRepository
+	repo        UserRepository
+	companyRepo CompanyRepository
 }
 
-func NewUserService(repo *repository.UserRepository, companyRepo *repository.CompanyRepository) *UserService {
+func NewUserService(repo UserRepository, companyRepo CompanyRepository) *UserService {
 	return &UserService{
 		repo:        repo,
 		companyRepo: companyRepo,
