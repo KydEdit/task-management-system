@@ -22,6 +22,8 @@ type fakeUserRepository struct {
 type fakeCompanyRepository struct {
 	checkedCompanyID int
 
+	ensureCalled bool
+
 	returnedError error
 }
 
@@ -42,6 +44,8 @@ func (f *fakeUserRepository) GetByEmail(email string) (models.User, error) {
 }
 
 func (f *fakeCompanyRepository) EnsureExists(companyID int) error {
+	f.ensureCalled = true
+
 	f.checkedCompanyID = companyID
 
 	return f.returnedError
@@ -218,6 +222,10 @@ func TestRegisterUser_InvalidCompanyID(t *testing.T) {
 
 	if err == nil {
 		t.Fatal("expected error, got nil")
+	}
+
+	if fakeCompanyRepo.ensureCalled {
+		t.Error("EnsureExists should not be called if companyID is invalid")
 	}
 
 	if !errors.Is(err, models.ErrInvalidCompanyID) {
