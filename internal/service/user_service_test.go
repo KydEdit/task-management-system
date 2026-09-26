@@ -103,6 +103,128 @@ func TestRegisterUser_CompanyNotFound(t *testing.T) {
 	}
 
 	if fakeUserRepo.registerCalled {
-		t.Error("registerUser should not be called when company does not exist")
+		t.Error("RegisterUser should not be called when company does not exist")
+	}
+}
+
+func TestRegisterUser_UserAlreadyExists(t *testing.T) {
+	fakeUserRepo := &fakeUserRepository{returnedError: models.ErrUserAlreadyExists}
+	fakeCompanyRepo := &fakeCompanyRepository{}
+	svc := NewUserService(fakeUserRepo, fakeCompanyRepo)
+
+	_, err := svc.Register(models.RegisterRequest{
+		Email:     "test@gmail.com",
+		Password:  "password123",
+		CompanyID: 7,
+	})
+
+	if err == nil {
+		t.Fatal("expected error, got nil")
+	}
+
+	if !fakeUserRepo.registerCalled {
+		t.Error("RegisterUser was not called, service failed before reaching repository")
+	}
+
+	if !errors.Is(err, models.ErrUserAlreadyExists) {
+		t.Errorf("expected ErrUserAlreadyExists, got %v", err)
+	}
+}
+
+func TestRegisterUser_RepositoryError(t *testing.T) {
+	dbErr := errors.New("database unavailable")
+
+	fakeUserRepo := &fakeUserRepository{returnedError: dbErr}
+	fakeCompanyRepo := &fakeCompanyRepository{}
+	svc := NewUserService(fakeUserRepo, fakeCompanyRepo)
+
+	_, err := svc.Register(models.RegisterRequest{
+		Email:     "test@gmail.com",
+		Password:  "password123",
+		CompanyID: 7,
+	})
+
+	if err == nil {
+		t.Fatal("expected error, got nil")
+	}
+
+	if !fakeUserRepo.registerCalled {
+		t.Error("RegisterUser was not called, service failed before reaching repository")
+	}
+
+	if !errors.Is(err, dbErr) {
+		t.Errorf("expected %v, got %v", dbErr, err)
+	}
+}
+
+func TestRegisterUser_InvalidEmail(t *testing.T) {
+	fakeUserRepo := &fakeUserRepository{}
+	fakeCompanyRepo := &fakeCompanyRepository{}
+	svc := NewUserService(fakeUserRepo, fakeCompanyRepo)
+
+	_, err := svc.Register(models.RegisterRequest{
+		Email:     "test@gmail",
+		Password:  "password123",
+		CompanyID: 7,
+	})
+
+	if err == nil {
+		t.Fatal("expected error, got nil")
+	}
+
+	if !errors.Is(err, models.ErrInvalidEmail) {
+		t.Errorf("expected ErrInvalidEmail, got %v", err)
+	}
+
+	if fakeUserRepo.registerCalled {
+		t.Error("RegisterUser should not be called if the email is invalid")
+	}
+}
+
+func TestRegisterUser_InvalidPassword(t *testing.T) {
+	fakeUserRepo := &fakeUserRepository{}
+	fakeCompanyRepo := &fakeCompanyRepository{}
+	svc := NewUserService(fakeUserRepo, fakeCompanyRepo)
+
+	_, err := svc.Register(models.RegisterRequest{
+		Email:     "test@gmail.com",
+		Password:  "passfls",
+		CompanyID: 7,
+	})
+
+	if err == nil {
+		t.Fatal("expected error, got nil")
+	}
+
+	if !errors.Is(err, models.ErrInvalidPassword) {
+		t.Errorf("expected ErrInvalidPassword, got %v", err)
+	}
+
+	if fakeUserRepo.registerCalled {
+		t.Error("RegisterUser should not be called if the password is invalid")
+	}
+}
+
+func TestRegisterUser_InvalidCompanyID(t *testing.T) {
+	fakeUserRepo := &fakeUserRepository{}
+	fakeCompanyRepo := &fakeCompanyRepository{}
+	svc := NewUserService(fakeUserRepo, fakeCompanyRepo)
+
+	_, err := svc.Register(models.RegisterRequest{
+		Email:     "test@gmail.com",
+		Password:  "password123",
+		CompanyID: 0,
+	})
+
+	if err == nil {
+		t.Fatal("expected error, got nil")
+	}
+
+	if !errors.Is(err, models.ErrInvalidCompanyID) {
+		t.Errorf("expected ErrInvalidCompanyID, got %v", err)
+	}
+
+	if fakeUserRepo.registerCalled {
+		t.Error("RegisterUser should not be called if the companyID is invalid")
 	}
 }
