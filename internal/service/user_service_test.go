@@ -5,6 +5,8 @@ import (
 	"strings"
 	"task-manager-api/internal/models"
 	"testing"
+
+	"golang.org/x/crypto/bcrypt"
 )
 
 type fakeUserRepository struct {
@@ -16,6 +18,7 @@ type fakeUserRepository struct {
 
 	requestedEmail string
 
+	returnedUser  models.User
 	returnedID    int
 	returnedError error
 }
@@ -41,7 +44,7 @@ func (f *fakeUserRepository) RegisterUser(email, password string, companyID int)
 func (f *fakeUserRepository) GetByEmail(email string) (models.User, error) {
 	f.requestedEmail = email
 
-	return models.User{}, f.returnedError
+	return f.returnedUser, f.returnedError
 }
 
 func (f *fakeCompanyRepository) EnsureExists(companyID int) error {
@@ -85,6 +88,14 @@ func TestRegisterUser_Success(t *testing.T) {
 
 	if fakeUserRepo.registeredPassword == "password123" {
 		t.Errorf("password should be hashed, but got plain: %q", fakeUserRepo.registeredPassword)
+	}
+
+	err = bcrypt.CompareHashAndPassword(
+		[]byte(fakeUserRepo.registeredPassword),
+		[]byte("password123"),
+	)
+	if err != nil {
+		t.Fatalf("stored password is not a valid hash of the original password: %v", err)
 	}
 }
 
@@ -235,5 +246,98 @@ func TestRegisterUser_Validation(t *testing.T) {
 				t.Errorf("RegisterUser should not be called for case %q", tt.name)
 			}
 		})
+	}
+}
+
+func TestLogin_Success(t *testing.T) {
+	hashed, err := bcrypt.GenerateFromPassword([]byte("password123"), bcrypt.DefaultCost)
+	if err != nil {
+		t.Fatalf("failed to hash password: %v", err)
+	}
+	hashedPassword := string(hashed)
+
+	returnedUser := models.User{
+		ID:           42,
+		Email:        "test@gmail.com",
+		PasswordHash: hashedPassword,
+	}
+
+	fakeUserRepo := &fakeUserRepository{
+		returnedUser: returnedUser,
+	}
+	fakeCompanyRepo := &fakeCompanyRepository{}
+	svc := NewUserService(fakeUserRepo, fakeCompanyRepo)
+
+	resp, err := svc.Login("test@gmail.com", "password123")
+
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	if resp.ID != 42 {
+		t.Errorf("resp.ID: expected 42, got %d", resp.ID)
+	}
+
+	if resp.Email != "test@gmail.com" {
+		t.Errorf("resp.Email: expected %q, got %q", "test@gmail.com", resp.Email)
+	}
+
+	if fakeUserRepo.requestedEmail != "test@gmail.com" {
+		t.Errorf("repo requestedEmail: expected %q, got %q", "test@gmail.com", fakeUserRepo.requestedEmail)
+	}
+}
+
+func TestLogin_UserNotFound(t *testing.T) {
+	fakeUserRepo := &fakeUserRepository{
+		returnedError: models.ErrUserNotFound,
+	}
+	fakeCompanyRepo := &fakeCompanyRepository{}
+	svc := NewUserService(fakeUserRepo, fakeCompanyRepo)
+
+	_, err := svc.Login("test@gmail.com", "password123")
+
+	if err == nil {
+		t.Fatal("expected error, got nil")
+	}
+
+	if !errors.Is(err, models.ErrInvalidCredentials) {
+		t.Errorf("expected ErrInvalidCredentials, got %v", err)
+	}
+
+	if fakeUserRepo.requestedEmail != "test@gmail.com" {
+		t.Errorf("repo requestedEmail: expected %q, got %q", "test@gmail.com", fakeUserRepo.requestedEmail)
+	}
+}
+
+func TestLogin_InvalidPassword(t *testing.T) {
+	hashed, err := bcrypt.GenerateFromPassword([]byte("correct-password"), bcrypt.DefaultCost)
+	if err != nil {
+		t.Fatalf("failed to hash password: %v", err)
+	}
+
+	returnedUser := models.User{
+		ID:           42,
+		Email:        "test@gmail.com",
+		PasswordHash: string(hashed),
+	}
+
+	fakeUserRepo := &fakeUserRepository{
+		returnedUser: returnedUser,
+	}
+	fakeCompanyRepo := &fakeCompanyRepository{}
+	svc := NewUserService(fakeUserRepo, fakeCompanyRepo)
+
+	_, err = svc.Login("test@gmail.com", "wrong-password")
+
+	if err == nil {
+		t.Fatal("expected error, got nil")
+	}
+
+	if !errors.Is(err, models.ErrInvalidCredentials) {
+		t.Errorf("expected ErrInvalidCredentials, got %v", err)
+	}
+
+	if fakeUserRepo.requestedEmail != "test@gmail.com" {
+		t.Errorf("repo requestedEmail: expected %q, got %q", "test@gmail.com", fakeUserRepo.requestedEmail)
 	}
 }
