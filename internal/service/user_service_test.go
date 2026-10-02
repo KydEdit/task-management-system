@@ -341,3 +341,27 @@ func TestLogin_InvalidPassword(t *testing.T) {
 		t.Errorf("repo requestedEmail: expected %q, got %q", "test@gmail.com", fakeUserRepo.requestedEmail)
 	}
 }
+
+func TestLogin_RepositoryError(t *testing.T) {
+	dbErr := errors.New("database unavailable")
+
+	fakeUserRepo := &fakeUserRepository{
+		returnedError: dbErr,
+	}
+	fakeCompanyRepo := &fakeCompanyRepository{}
+	svc := NewUserService(fakeUserRepo, fakeCompanyRepo)
+
+	_, err := svc.Login("test@gmail.com", "password123")
+
+	if err == nil {
+		t.Fatal("expected error, got nil")
+	}
+
+	if !errors.Is(err, dbErr) {
+		t.Errorf("expected %v, got %v", dbErr, err)
+	}
+
+	if fakeUserRepo.requestedEmail != "test@gmail.com" {
+		t.Errorf("repo requestedEmail: expected %q, got %q", "test@gmail.com", fakeUserRepo.requestedEmail)
+	}
+}
