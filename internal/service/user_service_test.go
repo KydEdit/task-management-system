@@ -365,3 +365,85 @@ func TestLogin_RepositoryError(t *testing.T) {
 		t.Errorf("repo requestedEmail: expected %q, got %q", "test@gmail.com", fakeUserRepo.requestedEmail)
 	}
 }
+
+func TestMe_Success(t *testing.T) {
+	returnedUser := models.User{
+		ID:        42,
+		Email:     "test@gmail.com",
+		CompanyID: 7,
+	}
+
+	fakeUserRepo := &fakeUserRepository{
+		returnedUser: returnedUser,
+	}
+	fakeCompanyRepo := &fakeCompanyRepository{}
+	svc := NewUserService(fakeUserRepo, fakeCompanyRepo)
+
+	resp, err := svc.Me("test@gmail.com")
+
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	if resp.ID != 42 {
+		t.Errorf("resp.ID: expected 42, got %d", resp.ID)
+	}
+
+	if resp.CompanyID != 7 {
+		t.Errorf("resp.CompanyID: expected 7, got %d", resp.CompanyID)
+	}
+
+	if resp.Email != "test@gmail.com" {
+		t.Errorf("resp.Email: expected %q, got %q", "test@gmail.com", resp.Email)
+	}
+
+	if fakeUserRepo.requestedEmail != "test@gmail.com" {
+		t.Errorf("repo requestedEmail: expected %q, got %q", "test@gmail.com", fakeUserRepo.requestedEmail)
+	}
+}
+
+func TestMe_UserNotFound(t *testing.T) {
+	fakeUserRepo := &fakeUserRepository{
+		returnedError: models.ErrUserNotFound,
+	}
+	fakeCompanyRepo := &fakeCompanyRepository{}
+	svc := NewUserService(fakeUserRepo, fakeCompanyRepo)
+
+	_, err := svc.Me("test@gmail.com")
+
+	if err == nil {
+		t.Fatal("expected error, got nil")
+	}
+
+	if !errors.Is(err, models.ErrUserNotFound) {
+		t.Errorf("expected ErrUserNotFound, got %v", err)
+	}
+
+	if fakeUserRepo.requestedEmail != "test@gmail.com" {
+		t.Errorf("repo requestedEmail: expected %q, got %q", "test@gmail.com", fakeUserRepo.requestedEmail)
+	}
+}
+
+func TestMe_RepositoryError(t *testing.T) {
+	dbErr := errors.New("database unavailable")
+
+	fakeUserRepo := &fakeUserRepository{
+		returnedError: dbErr,
+	}
+	fakeCompanyRepo := &fakeCompanyRepository{}
+	svc := NewUserService(fakeUserRepo, fakeCompanyRepo)
+
+	_, err := svc.Me("test@gmail.com")
+
+	if err == nil {
+		t.Fatal("expected error, got nil")
+	}
+
+	if !errors.Is(err, dbErr) {
+		t.Errorf("expected %v, got %v", dbErr, err)
+	}
+
+	if fakeUserRepo.requestedEmail != "test@gmail.com" {
+		t.Errorf("repo requestedEmail: expected %q, got %q", "test@gmail.com", fakeUserRepo.requestedEmail)
+	}
+}
