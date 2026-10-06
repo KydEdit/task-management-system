@@ -6,21 +6,20 @@ import (
 	"net/http"
 	"strconv"
 	"task-manager-api/internal/models"
-	"task-manager-api/internal/service"
 )
 
 type UserHandler struct {
-	serviceU *service.UserService
-	auth     *service.AuthService
+	serviceU UserService
+	auth     AuthService
 }
 
 type TaskHandler struct {
-	serviceT *service.TaskUserService
+	serviceT TaskService
 }
 
 func NewUserHandler(
-	s *service.UserService,
-	auth *service.AuthService,
+	s UserService,
+	auth AuthService,
 ) *UserHandler {
 
 	return &UserHandler{
@@ -29,7 +28,7 @@ func NewUserHandler(
 	}
 }
 
-func NewTaskHandler(s *service.TaskUserService) *TaskHandler {
+func NewTaskHandler(s TaskService) *TaskHandler {
 	return &TaskHandler{
 		serviceT: s,
 	}
@@ -78,7 +77,6 @@ func (h *UserHandler) RegisterUser(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *UserHandler) LoginUser(w http.ResponseWriter, r *http.Request) {
-
 	var user models.LoginRequest
 
 	err := json.NewDecoder(r.Body).Decode(&user)
@@ -123,28 +121,19 @@ func (h *UserHandler) LoginUser(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *UserHandler) GetMe(w http.ResponseWriter, r *http.Request) {
-
 	email, ok := r.Context().Value(userContextKey).(string)
 	if !ok {
-		http.Error(w, "Unauthorized", http.StatusUnauthorized)
+		writeError(w, http.StatusUnauthorized, "unauthorized")
 		return
 	}
 	meInfo, err := h.serviceU.Me(email)
 	if err != nil {
 		if errors.Is(err, models.ErrUserNotFound) {
-			http.Error(
-				w,
-				"Invalid email or password",
-				http.StatusUnauthorized,
-			)
+			writeError(w, http.StatusUnauthorized, "user no longer exists")
 			return
 		}
 
-		http.Error(
-			w,
-			"Internal server error",
-			http.StatusInternalServerError,
-		)
+		writeError(w, http.StatusInternalServerError, "internal server error")
 		return
 	}
 
@@ -153,7 +142,6 @@ func (h *UserHandler) GetMe(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *TaskHandler) CreateTask(w http.ResponseWriter, r *http.Request) {
-
 	var task models.UserTasks
 
 	err := json.NewDecoder(r.Body).Decode(&task)
@@ -183,7 +171,6 @@ func (h *TaskHandler) CreateTask(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *TaskHandler) GetTask(w http.ResponseWriter, r *http.Request) {
-
 	email, ok := r.Context().Value(userContextKey).(string)
 	if !ok {
 		http.Error(w, "Unauthorized", http.StatusUnauthorized)
@@ -227,7 +214,6 @@ func (h *TaskHandler) GetTask(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *TaskHandler) DeleteTask(w http.ResponseWriter, r *http.Request) {
-
 	email, ok := r.Context().Value(userContextKey).(string)
 	if !ok {
 		http.Error(w, "Unauthorized", http.StatusUnauthorized)
