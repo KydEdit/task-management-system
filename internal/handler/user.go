@@ -81,43 +81,28 @@ func (h *UserHandler) LoginUser(w http.ResponseWriter, r *http.Request) {
 
 	err := json.NewDecoder(r.Body).Decode(&user)
 	if err != nil {
-		http.Error(w, "Invalid request body", http.StatusBadRequest)
+		writeError(w, http.StatusBadRequest, "invalid request body")
 		return
 	}
 
 	foundUser, err := h.serviceU.Login(user.Email, user.Password)
 	if err != nil {
 		if errors.Is(err, models.ErrInvalidCredentials) {
-			http.Error(
-				w,
-				"Invalid email or password",
-				http.StatusUnauthorized,
-			)
+			writeError(w, http.StatusUnauthorized, "invalid email or password")
 			return
 		}
 
-		http.Error(
-			w,
-			"Internal server error",
-			http.StatusInternalServerError,
-		)
+		writeError(w, http.StatusInternalServerError, "internal server error")
 		return
 	}
 
 	token, err := h.auth.GenerateToken(foundUser.Email)
 	if err != nil {
-		http.Error(
-			w,
-			"Could not generate token",
-			http.StatusInternalServerError,
-		)
+		writeError(w, http.StatusInternalServerError, "could not generate token")
 		return
 	}
 
-	w.WriteHeader(http.StatusOK)
-	json.NewEncoder(w).Encode(map[string]string{
-		"token": token,
-	})
+	writeJSON(w, http.StatusOK, map[string]string{"token": token})
 }
 
 func (h *UserHandler) GetMe(w http.ResponseWriter, r *http.Request) {
@@ -137,8 +122,7 @@ func (h *UserHandler) GetMe(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	w.WriteHeader(http.StatusOK)
-	json.NewEncoder(w).Encode(meInfo)
+	writeJSON(w, http.StatusOK, meInfo)
 }
 
 func (h *TaskHandler) CreateTask(w http.ResponseWriter, r *http.Request) {
@@ -146,13 +130,13 @@ func (h *TaskHandler) CreateTask(w http.ResponseWriter, r *http.Request) {
 
 	err := json.NewDecoder(r.Body).Decode(&task)
 	if err != nil {
-		http.Error(w, "Invalid request body", http.StatusBadRequest)
+		writeError(w, http.StatusBadRequest, "invalid request body")
 		return
 	}
 
 	email, ok := r.Context().Value(userContextKey).(string)
 	if !ok {
-		http.Error(w, "Unauthorized", http.StatusUnauthorized)
+		writeError(w, http.StatusUnauthorized, "unauthorized")
 		return
 	}
 
@@ -160,20 +144,17 @@ func (h *TaskHandler) CreateTask(w http.ResponseWriter, r *http.Request) {
 
 	createdTask, err := h.serviceT.Create(task)
 	if err != nil {
-		http.Error(w, "Internal server error", http.StatusInternalServerError)
+		writeError(w, http.StatusInternalServerError, "internal server error")
 		return
 	}
 
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(http.StatusCreated)
-	json.NewEncoder(w).Encode(createdTask)
-
+	writeJSON(w, http.StatusCreated, createdTask)
 }
 
 func (h *TaskHandler) GetTask(w http.ResponseWriter, r *http.Request) {
 	email, ok := r.Context().Value(userContextKey).(string)
 	if !ok {
-		http.Error(w, "Unauthorized", http.StatusUnauthorized)
+		writeError(w, http.StatusUnauthorized, "unauthorized")
 		return
 	}
 
@@ -182,41 +163,37 @@ func (h *TaskHandler) GetTask(w http.ResponseWriter, r *http.Request) {
 	if idStr == "" {
 		tasks, err := h.serviceT.Search(email)
 		if err != nil {
-			http.Error(w, "Failed to get tasks", http.StatusInternalServerError)
+			writeError(w, http.StatusInternalServerError, "failed to get tasks")
 			return
 		}
 
-		w.Header().Set("Content-Type", "application/json")
-		w.WriteHeader(http.StatusOK)
-		json.NewEncoder(w).Encode(tasks)
+		writeJSON(w, http.StatusOK, tasks)
 		return
 	}
 
 	urlintid, err := strconv.Atoi(idStr)
 	if err != nil {
-		http.Error(w, "Invalid ID format", http.StatusBadRequest)
+		writeError(w, http.StatusBadRequest, "invalid id format")
 		return
 	}
 
 	task, err := h.serviceT.SearchTask(email, urlintid)
 	if err != nil {
 		if errors.Is(err, models.ErrTaskNotFound) {
-			http.Error(w, "Task not found", http.StatusNotFound)
+			writeError(w, http.StatusNotFound, "task not found")
 			return
 		}
-		http.Error(w, "Internal server error", http.StatusInternalServerError)
+		writeError(w, http.StatusInternalServerError, "internal server error")
 		return
 	}
 
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(http.StatusOK)
-	json.NewEncoder(w).Encode(task)
+	writeJSON(w, http.StatusOK, task)
 }
 
 func (h *TaskHandler) DeleteTask(w http.ResponseWriter, r *http.Request) {
 	email, ok := r.Context().Value(userContextKey).(string)
 	if !ok {
-		http.Error(w, "Unauthorized", http.StatusUnauthorized)
+		writeError(w, http.StatusUnauthorized, "unauthorized")
 		return
 	}
 
@@ -224,17 +201,17 @@ func (h *TaskHandler) DeleteTask(w http.ResponseWriter, r *http.Request) {
 
 	id, err := strconv.Atoi(idStr)
 	if err != nil {
-		http.Error(w, "Invalid ID format", http.StatusBadRequest)
+		writeError(w, http.StatusBadRequest, "invalid id format")
 		return
 	}
 
 	err = h.serviceT.Delete(email, id)
 	if err != nil {
 		if errors.Is(err, models.ErrTaskNotFound) {
-			http.Error(w, "Task not found", http.StatusNotFound)
+			writeError(w, http.StatusNotFound, "task not found")
 			return
 		}
-		http.Error(w, "Internal server error", http.StatusInternalServerError)
+		writeError(w, http.StatusInternalServerError, "internal server error")
 		return
 	}
 
@@ -246,13 +223,13 @@ func (h *TaskHandler) EditTask(w http.ResponseWriter, r *http.Request) {
 
 	err := json.NewDecoder(r.Body).Decode(&task)
 	if err != nil {
-		http.Error(w, "Invalid request body", http.StatusBadRequest)
+		writeError(w, http.StatusBadRequest, "invalid request body")
 		return
 	}
 
 	email, ok := r.Context().Value(userContextKey).(string)
 	if !ok {
-		http.Error(w, "Unauthorized", http.StatusUnauthorized)
+		writeError(w, http.StatusUnauthorized, "unauthorized")
 		return
 	}
 
@@ -260,17 +237,17 @@ func (h *TaskHandler) EditTask(w http.ResponseWriter, r *http.Request) {
 
 	id, err := strconv.Atoi(idStr)
 	if err != nil {
-		http.Error(w, "Invalid ID format", http.StatusBadRequest)
+		writeError(w, http.StatusBadRequest, "invalid id format")
 		return
 	}
 
 	err = h.serviceT.Update(email, id, task)
 	if err != nil {
 		if errors.Is(err, models.ErrTaskNotFound) {
-			http.Error(w, "Task not found", http.StatusNotFound)
+			writeError(w, http.StatusNotFound, "task not found")
 			return
 		}
-		http.Error(w, "Internal server error", http.StatusInternalServerError)
+		writeError(w, http.StatusInternalServerError, "internal server error")
 		return
 	}
 

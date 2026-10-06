@@ -6,6 +6,7 @@ import (
 	"errors"
 	"net/http"
 	"net/http/httptest"
+	"strings"
 	"task-manager-api/internal/models"
 	"testing"
 )
@@ -60,8 +61,6 @@ func newRequestWithUser(method, target, email string) *http.Request {
 }
 
 func TestGetMe_Success(t *testing.T) {
-	req := newRequestWithUser(http.MethodGet, "/get", "test@gmail.com")
-
 	fakeService := &fakeUserService{
 		returnedResponse: models.UserResponse{
 			ID:        42,
@@ -70,14 +69,19 @@ func TestGetMe_Success(t *testing.T) {
 		},
 	}
 	fakeAuth := &fakeAuthService{}
-
 	h := NewUserHandler(fakeService, fakeAuth)
 	rec := httptest.NewRecorder()
+	req := newRequestWithUser(http.MethodGet, "/get", "test@gmail.com")
 
 	h.GetMe(rec, req)
 
 	if rec.Code != http.StatusOK {
 		t.Fatalf("expected 200, got %d", rec.Code)
+	}
+
+	ct := rec.Header().Get("Content-Type")
+	if !strings.Contains(ct, "application/json") {
+		t.Errorf("Content-Type: expected application/json, got %q", ct)
 	}
 
 	var resp models.UserResponse
@@ -104,19 +108,21 @@ func TestGetMe_Unauthorized(t *testing.T) {
 	var errResp struct {
 		Error string `json:"error"`
 	}
-
-	req := httptest.NewRequest(http.MethodGet, "/get", nil)
-
 	fakeService := &fakeUserService{}
 	fakeAuth := &fakeAuthService{}
-
 	h := NewUserHandler(fakeService, fakeAuth)
 	rec := httptest.NewRecorder()
+	req := httptest.NewRequest(http.MethodGet, "/get", nil)
 
 	h.GetMe(rec, req)
 
 	if rec.Code != http.StatusUnauthorized {
 		t.Fatalf("expected 401, got %d", rec.Code)
+	}
+
+	ct := rec.Header().Get("Content-Type")
+	if !strings.Contains(ct, "application/json") {
+		t.Errorf("Content-Type: expected application/json, got %q", ct)
 	}
 
 	if fakeService.requestedEmail != "" {
@@ -131,70 +137,56 @@ func TestGetMe_Unauthorized(t *testing.T) {
 	}
 }
 
-func TestGetMe_UserNotFound(t *testing.T) {
-	var errResp struct {
-		Error string `json:"error"`
+func TestGetMe_Errors(t *testing.T) {
+	tests := []struct {
+		name           string
+		serviceError   error
+		expectedStatus int
+	}{
+		{
+			name:           "user not found",
+			serviceError:   models.ErrUserNotFound,
+			expectedStatus: http.StatusUnauthorized,
+		},
+		{
+			name:           "internal error",
+			serviceError:   errors.New("database unavailable"),
+			expectedStatus: http.StatusInternalServerError,
+		},
 	}
 
-	req := newRequestWithUser(http.MethodGet, "/get", "test@gmail.com")
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			fakeService := &fakeUserService{returnedError: tt.serviceError}
+			fakeAuth := &fakeAuthService{}
+			h := NewUserHandler(fakeService, fakeAuth)
+			rec := httptest.NewRecorder()
+			req := newRequestWithUser(http.MethodGet, "/get", "test@gmail.com")
 
-	fakeService := &fakeUserService{
-		returnedError: models.ErrUserNotFound,
-	}
-	fakeAuth := &fakeAuthService{}
+			h.GetMe(rec, req)
 
-	h := NewUserHandler(fakeService, fakeAuth)
-	rec := httptest.NewRecorder()
+			if rec.Code != tt.expectedStatus {
+				t.Errorf("expected %d, got %d", tt.expectedStatus, rec.Code)
+			}
 
-	h.GetMe(rec, req)
+			ct := rec.Header().Get("Content-Type")
+			if !strings.Contains(ct, "application/json") {
+				t.Errorf("Content-Type: expected application/json, got %q", ct)
+			}
 
-	if rec.Code != http.StatusUnauthorized {
-		t.Fatalf("expected 401, got %d", rec.Code)
-	}
+			if fakeService.requestedEmail != "test@gmail.com" {
+				t.Errorf("requestedEmail: expected %q, got %q", "test@gmail.com", fakeService.requestedEmail)
+			}
 
-	if fakeService.requestedEmail != "test@gmail.com" {
-		t.Errorf("requestedEmail: expected %q, got %q", "test@gmail.com", fakeService.requestedEmail)
-	}
-
-	if err := json.NewDecoder(rec.Body).Decode(&errResp); err != nil {
-		t.Fatalf("failed to decode error response: %v", err)
-	}
-	if errResp.Error == "" {
-		t.Error("expected error message in response body")
-	}
-}
-
-func TestGetMe_InternalError(t *testing.T) {
-	var errResp struct {
-		Error string `json:"error"`
-	}
-
-	dbErr := errors.New("database unavailable")
-
-	req := newRequestWithUser(http.MethodGet, "/get", "test@gmail.com")
-
-	fakeService := &fakeUserService{
-		returnedError: dbErr,
-	}
-	fakeAuth := &fakeAuthService{}
-
-	h := NewUserHandler(fakeService, fakeAuth)
-	rec := httptest.NewRecorder()
-
-	h.GetMe(rec, req)
-
-	if rec.Code != http.StatusInternalServerError {
-		t.Fatalf("expected 500, got %d", rec.Code)
-	}
-
-	if fakeService.requestedEmail != "test@gmail.com" {
-		t.Errorf("requestedEmail: expected %q, got %q", "test@gmail.com", fakeService.requestedEmail)
-	}
-
-	if err := json.NewDecoder(rec.Body).Decode(&errResp); err != nil {
-		t.Fatalf("failed to decode error response: %v", err)
-	}
-	if errResp.Error == "" {
-		t.Error("expected error message in response body")
+			var errResp struct {
+				Error string `json:"error"`
+			}
+			if err := json.NewDecoder(rec.Body).Decode(&errResp); err != nil {
+				t.Fatalf("failed to decode error response: %v", err)
+			}
+			if errResp.Error == "" {
+				t.Error("expected error message in response body")
+			}
+		})
 	}
 }
