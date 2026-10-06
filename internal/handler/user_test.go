@@ -12,6 +12,7 @@ import (
 )
 
 type fakeUserService struct {
+	meCalled       bool
 	requestedEmail string
 
 	returnedResponse models.UserResponse
@@ -34,6 +35,7 @@ func (f *fakeUserService) Login(email string, password string) (models.UserRespo
 }
 
 func (f *fakeUserService) Me(email string) (models.UserResponse, error) {
+	f.meCalled = true
 	f.requestedEmail = email
 
 	return f.returnedResponse, f.returnedError
@@ -125,8 +127,8 @@ func TestGetMe_Unauthorized(t *testing.T) {
 		t.Errorf("Content-Type: expected application/json, got %q", ct)
 	}
 
-	if fakeService.requestedEmail != "" {
-		t.Errorf("service should not be called when email is missing from context, but was called with %q", fakeService.requestedEmail)
+	if fakeService.meCalled {
+		t.Errorf("service should not be called, but was called with %q", fakeService.requestedEmail)
 	}
 
 	if err := json.NewDecoder(rec.Body).Decode(&errResp); err != nil {
@@ -166,7 +168,7 @@ func TestGetMe_Errors(t *testing.T) {
 			h.GetMe(rec, req)
 
 			if rec.Code != tt.expectedStatus {
-				t.Errorf("expected %d, got %d", tt.expectedStatus, rec.Code)
+				t.Fatalf("expected %d, got %d", tt.expectedStatus, rec.Code)
 			}
 
 			ct := rec.Header().Get("Content-Type")
