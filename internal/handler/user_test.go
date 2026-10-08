@@ -456,6 +456,9 @@ func TestLoginUser_Success(t *testing.T) {
 		t.Errorf("token: expected %q, got %q", "test-token", resp["token"])
 	}
 
+	if !fakeService.loginCalled {
+		t.Error("Login should be called")
+	}
 	if fakeService.requestedLoginEmail != "test@gmail.com" {
 		t.Errorf("Login requestedEmail: expected %q, got %q", "test@gmail.com", fakeService.requestedLoginEmail)
 	}
@@ -498,6 +501,10 @@ func TestLoginUser_InvalidCredentials(t *testing.T) {
 	ct := rec.Header().Get("Content-Type")
 	if !strings.Contains(ct, "application/json") {
 		t.Errorf("Content-Type: expected application/json, got %q", ct)
+	}
+
+	if fakeService.requestedLoginEmail != "test@gmail.com" {
+		t.Errorf("requestedLoginEmail: expected %q, got %q", "test@gmail.com", fakeService.requestedLoginEmail)
 	}
 
 	if !fakeService.loginCalled {
