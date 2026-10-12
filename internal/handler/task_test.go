@@ -56,11 +56,16 @@ func (f *fakeTaskService) Delete(email string, id int) error {
 }
 
 func (f *fakeTaskService) Search(email string) ([]models.UserTasks, error) {
+	f.searchCalled = true
+	f.requestedSearchEmail = email
 
 	return f.returnedList, f.returnedError
 }
 
 func (f *fakeTaskService) SearchTask(email string, id int) (models.UserTasks, error) {
+	f.searchTaskCalled = true
+	f.requestedTaskEmail = email
+	f.requestedTaskID = id
 
 	return f.returnedResponse, f.returnedError
 }
@@ -271,5 +276,128 @@ func TestCreateTask_ServiceError(t *testing.T) {
 	}
 	if errResp.Error == "" {
 		t.Error("expected error message in response body")
+	}
+}
+
+func TestGetTask_Success(t *testing.T) {
+	fakeService := &fakeTaskService{
+		returnedList: []models.UserTasks{
+			{
+				ID:            7,
+				Title:         "testTitle7",
+				Description:   "testDescription7",
+				TaskCompleted: true,
+			},
+			{
+				ID:            8,
+				Title:         "testTitle8",
+				Description:   "testDescription8",
+				TaskCompleted: true,
+			},
+			{
+				ID:            9,
+				Title:         "testTitle9",
+				Description:   "testDescription9",
+				TaskCompleted: true,
+			},
+		},
+	}
+	h := NewTaskHandler(fakeService)
+	rec := httptest.NewRecorder()
+	req := newRequestWithTask(http.MethodGet, "/tasks", "test@gmail.com", nil)
+
+	h.GetTask(rec, req)
+
+	if rec.Code != http.StatusOK {
+		t.Fatalf("expected 200, got %d", rec.Code)
+	}
+
+	ct := rec.Header().Get("Content-Type")
+	if !strings.Contains(ct, "application/json") {
+		t.Errorf("Content-Type: expected application/json, got %q", ct)
+	}
+
+	var resp []models.UserTasks
+	if err := json.NewDecoder(rec.Body).Decode(&resp); err != nil {
+		t.Fatalf("failed to decode response: %v", err)
+	}
+
+	if len(resp) != 3 {
+		t.Fatalf("expected 3 tasks, got %d", len(resp))
+	}
+	if resp[0].ID != 7 {
+		t.Errorf("resp[0].ID: expected 7, got %d", resp[0].ID)
+	}
+	if resp[0].Title != "testTitle7" {
+		t.Errorf("resp[0].Title: expected %q, got %q", "testTitle7", resp[0].Title)
+	}
+	if resp[1].ID != 8 {
+		t.Errorf("resp[1].ID: expected 8, got %d", resp[1].ID)
+	}
+	if resp[0].TaskCompleted != true {
+		t.Errorf("resp[0].TaskCompleted: expected true, got %v", resp[0].TaskCompleted)
+	}
+
+	if fakeService.requestedSearchEmail != "test@gmail.com" {
+		t.Errorf("Search got UserEmail %q, want %q", fakeService.requestedSearchEmail, "test@gmail.com")
+	}
+
+	if !fakeService.searchCalled {
+		t.Error("Search should be called")
+	}
+}
+
+func TestGetTask_ByID_Success(t *testing.T) {
+	fakeService := &fakeTaskService{
+		returnedResponse: models.UserTasks{
+			ID:            7,
+			Title:         "testTitle7",
+			Description:   "testDescription7",
+			TaskCompleted: true,
+		},
+	}
+	h := NewTaskHandler(fakeService)
+	rec := httptest.NewRecorder()
+	req := newRequestWithTask(http.MethodGet, "/tasks/{id}", "test@gmail.com", nil)
+	req.SetPathValue("id", "7")
+
+	h.GetTask(rec, req)
+
+	if rec.Code != http.StatusOK {
+		t.Fatalf("expected 200, got %d", rec.Code)
+	}
+
+	ct := rec.Header().Get("Content-Type")
+	if !strings.Contains(ct, "application/json") {
+		t.Errorf("Content-Type: expected application/json, got %q", ct)
+	}
+
+	var resp models.UserTasks
+	if err := json.NewDecoder(rec.Body).Decode(&resp); err != nil {
+		t.Fatalf("failed to decode response: %v", err)
+	}
+
+	if resp.ID != 7 {
+		t.Errorf("resp.ID: expected 7, got %d", resp.ID)
+	}
+	if resp.Title != "testTitle7" {
+		t.Errorf("resp.Title: expected %q, got %q", "testTitle7", resp.Title)
+	}
+	if resp.Description != "testDescription7" {
+		t.Errorf("resp.Description: expected %q, got %q", "testDescription7", resp.Description)
+	}
+	if resp.TaskCompleted != true {
+		t.Errorf("resp.TaskCompleted: expected true, got %v", resp.TaskCompleted)
+	}
+
+	if fakeService.requestedTaskEmail != "test@gmail.com" {
+		t.Errorf("SearchTask got UserEmail %q, want %q", fakeService.requestedTaskEmail, "test@gmail.com")
+	}
+	if fakeService.requestedTaskID != 7 {
+		t.Errorf("SearchTask got id %d, want %d", fakeService.requestedTaskID, 7)
+	}
+
+	if !fakeService.searchTaskCalled {
+		t.Error("SearchTask should be called")
 	}
 }
