@@ -401,3 +401,161 @@ func TestGetTask_ByID_Success(t *testing.T) {
 		t.Error("SearchTask should be called")
 	}
 }
+
+func TestGetTask_Unauthorized(t *testing.T) {
+	fakeService := &fakeTaskService{}
+	h := NewTaskHandler(fakeService)
+	rec := httptest.NewRecorder()
+	req := httptest.NewRequest(http.MethodGet, "/tasks", nil)
+
+	h.GetTask(rec, req)
+
+	if rec.Code != http.StatusUnauthorized {
+		t.Fatalf("expected 401, got %d", rec.Code)
+	}
+
+	ct := rec.Header().Get("Content-Type")
+	if !strings.Contains(ct, "application/json") {
+		t.Errorf("Content-Type: expected application/json, got %q", ct)
+	}
+
+	if fakeService.searchCalled {
+		t.Error("Search should not be called on unauthorized request")
+	}
+	if fakeService.searchTaskCalled {
+		t.Error("SearchTask should not be called on unauthorized request")
+	}
+
+	var errResp struct {
+		Error string `json:"error"`
+	}
+	if err := json.NewDecoder(rec.Body).Decode(&errResp); err != nil {
+		t.Fatalf("failed to decode error response: %v", err)
+	}
+	if errResp.Error == "" {
+		t.Error("expected error message in response body")
+	}
+}
+
+func TestGetTask_InvalidID(t *testing.T) {
+	fakeService := &fakeTaskService{}
+	h := NewTaskHandler(fakeService)
+	rec := httptest.NewRecorder()
+	req := newRequestWithTask(http.MethodGet, "/tasks/{id}", "test@gmail.com", nil)
+	req.SetPathValue("id", "abc")
+
+	h.GetTask(rec, req)
+
+	if rec.Code != http.StatusBadRequest {
+		t.Fatalf("expected 400, got %d", rec.Code)
+	}
+
+	ct := rec.Header().Get("Content-Type")
+	if !strings.Contains(ct, "application/json") {
+		t.Errorf("Content-Type: expected application/json, got %q", ct)
+	}
+
+	if fakeService.searchCalled {
+		t.Error("Search should not be called for invalid id")
+	}
+	if fakeService.searchTaskCalled {
+		t.Error("SearchTask should not be called for invalid id")
+	}
+
+	var errResp struct {
+		Error string `json:"error"`
+	}
+	if err := json.NewDecoder(rec.Body).Decode(&errResp); err != nil {
+		t.Fatalf("failed to decode error response: %v", err)
+	}
+	if errResp.Error == "" {
+		t.Error("expected error message in response body")
+	}
+}
+
+func TestGetTask_ServiceError(t *testing.T) {
+	fakeService := &fakeTaskService{
+		returnedError: errors.New("database unavailable"),
+	}
+	h := NewTaskHandler(fakeService)
+	rec := httptest.NewRecorder()
+	req := newRequestWithTask(http.MethodGet, "/tasks", "test@gmail.com", nil)
+
+	h.GetTask(rec, req)
+
+	if rec.Code != http.StatusInternalServerError {
+		t.Fatalf("expected 500, got %d", rec.Code)
+	}
+
+	ct := rec.Header().Get("Content-Type")
+	if !strings.Contains(ct, "application/json") {
+		t.Errorf("Content-Type: expected application/json, got %q", ct)
+	}
+
+	if !fakeService.searchCalled {
+		t.Error("Search should be called")
+	}
+	if fakeService.searchTaskCalled {
+		t.Error("SearchTask should not be called when listing tasks")
+	}
+
+	var errResp struct {
+		Error string `json:"error"`
+	}
+	if err := json.NewDecoder(rec.Body).Decode(&errResp); err != nil {
+		t.Fatalf("failed to decode error response: %v", err)
+	}
+	if errResp.Error == "" {
+		t.Error("expected error message in response body")
+	}
+}
+
+func TestGetTask_Errors(t *testing.T) {
+	tests := []struct {
+		name       string
+		serviceErr error
+	}{
+		{"task not found", models.ErrTaskNotFound},
+		{"server error", errors.New("database unavailable")},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			fakeService := &fakeTaskService{
+				returnedError: tt.serviceErr,
+			}
+			h := NewTaskHandler(fakeService)
+			rec := httptest.NewRecorder()
+			req := newRequestWithTask(http.MethodGet, "/tasks/{id}", "test@gmail.com", nil)
+			req.SetPathValue("id", "7")
+
+			h.GetTask(rec, req)
+
+			if rec.Code != http.StatusNotFound && rec.Code != http.StatusInternalServerError {
+				t.Fatalf("expected 404 or 500, got %d", rec.Code)
+			}
+
+			ct := rec.Header().Get("Content-Type")
+			if !strings.Contains(ct, "application/json") {
+				t.Errorf("Content-Type: expected application/json, got %q", ct)
+			}
+
+			if fakeService.searchCalled {
+				t.Error("Search should not be called when id is provided")
+			}
+			if !fakeService.searchTaskCalled {
+				t.Error("SearchTask should be called")
+			}
+
+			var errResp struct {
+				Error string `json:"error"`
+			}
+			if err := json.NewDecoder(rec.Body).Decode(&errResp); err != nil {
+				t.Fatalf("failed to decode error response: %v", err)
+			}
+			if errResp.Error == "" {
+				t.Error("expected error message in response body")
+			}
+		})
+	}
+}
