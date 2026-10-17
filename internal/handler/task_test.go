@@ -51,6 +51,9 @@ func (f *fakeTaskService) Create(task models.UserTasks) (models.UserTasks, error
 }
 
 func (f *fakeTaskService) Delete(email string, id int) error {
+	f.deleteCalled = true
+	f.requestedDeleteEmail = email
+	f.requestedDeleteID = id
 
 	return f.returnedError
 }
@@ -71,6 +74,10 @@ func (f *fakeTaskService) SearchTask(email string, id int) (models.UserTasks, er
 }
 
 func (f *fakeTaskService) Update(email string, id int, task models.UserTasks) error {
+	f.updateCalled = true
+	f.requestedUpdateEmail = email
+	f.requestedUpdateID = id
+	f.requestedUpdateTask = task
 
 	return f.returnedError
 }
@@ -545,6 +552,368 @@ func TestGetTask_Errors(t *testing.T) {
 			}
 			if !fakeService.searchTaskCalled {
 				t.Error("SearchTask should be called")
+			}
+
+			var errResp struct {
+				Error string `json:"error"`
+			}
+			if err := json.NewDecoder(rec.Body).Decode(&errResp); err != nil {
+				t.Fatalf("failed to decode error response: %v", err)
+			}
+			if errResp.Error == "" {
+				t.Error("expected error message in response body")
+			}
+		})
+	}
+}
+
+func TestDeleteTask_Success(t *testing.T) {
+	fakeService := &fakeTaskService{}
+	h := NewTaskHandler(fakeService)
+	rec := httptest.NewRecorder()
+	req := newRequestWithTask(http.MethodDelete, "/tasks/{id}", "test@gmail.com", nil)
+	req.SetPathValue("id", "7")
+
+	h.DeleteTask(rec, req)
+
+	if rec.Code != http.StatusNoContent {
+		t.Fatalf("expected 204, got %d", rec.Code)
+	}
+
+	if fakeService.requestedDeleteEmail != "test@gmail.com" {
+		t.Errorf("Delete got UserEmail %q, want %q", fakeService.requestedDeleteEmail, "test@gmail.com")
+	}
+	if fakeService.requestedDeleteID != 7 {
+		t.Errorf("Delete got id %d, want %d", fakeService.requestedDeleteID, 7)
+	}
+
+	if !fakeService.deleteCalled {
+		t.Error("Delete should be called")
+	}
+}
+
+func TestDeleteTask_Unauthorized(t *testing.T) {
+	fakeService := &fakeTaskService{}
+	h := NewTaskHandler(fakeService)
+	rec := httptest.NewRecorder()
+	req := httptest.NewRequest(http.MethodDelete, "/tasks/{id}", nil)
+
+	h.DeleteTask(rec, req)
+
+	if rec.Code != http.StatusUnauthorized {
+		t.Fatalf("expected 401, got %d", rec.Code)
+	}
+
+	ct := rec.Header().Get("Content-Type")
+	if !strings.Contains(ct, "application/json") {
+		t.Errorf("Content-Type: expected application/json, got %q", ct)
+	}
+
+	if fakeService.deleteCalled {
+		t.Error("Delete should not be called on unauthorized request")
+	}
+
+	var errResp struct {
+		Error string `json:"error"`
+	}
+	if err := json.NewDecoder(rec.Body).Decode(&errResp); err != nil {
+		t.Fatalf("failed to decode error response: %v", err)
+	}
+	if errResp.Error == "" {
+		t.Error("expected error message in response body")
+	}
+}
+
+func TestDeleteTask_InvalidID(t *testing.T) {
+	fakeService := &fakeTaskService{}
+	h := NewTaskHandler(fakeService)
+	rec := httptest.NewRecorder()
+	req := newRequestWithTask(http.MethodDelete, "/tasks/{id}", "test@gmail.com", nil)
+	req.SetPathValue("id", "abc")
+
+	h.DeleteTask(rec, req)
+
+	if rec.Code != http.StatusBadRequest {
+		t.Fatalf("expected 400, got %d", rec.Code)
+	}
+
+	ct := rec.Header().Get("Content-Type")
+	if !strings.Contains(ct, "application/json") {
+		t.Errorf("Content-Type: expected application/json, got %q", ct)
+	}
+
+	if fakeService.deleteCalled {
+		t.Error("Delete should not be called for invalid id")
+	}
+
+	var errResp struct {
+		Error string `json:"error"`
+	}
+	if err := json.NewDecoder(rec.Body).Decode(&errResp); err != nil {
+		t.Fatalf("failed to decode error response: %v", err)
+	}
+	if errResp.Error == "" {
+		t.Error("expected error message in response body")
+	}
+}
+
+func TestDeleteTask_Errors(t *testing.T) {
+	tests := []struct {
+		name       string
+		serviceErr error
+	}{
+		{"task not found", models.ErrTaskNotFound},
+		{"server error", errors.New("database unavailable")},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			fakeService := &fakeTaskService{
+				returnedError: tt.serviceErr,
+			}
+			h := NewTaskHandler(fakeService)
+			rec := httptest.NewRecorder()
+			req := newRequestWithTask(http.MethodDelete, "/tasks/{id}", "test@gmail.com", nil)
+			req.SetPathValue("id", "7")
+
+			h.DeleteTask(rec, req)
+
+			if rec.Code != http.StatusNotFound && rec.Code != http.StatusInternalServerError {
+				t.Fatalf("expected 404 or 500, got %d", rec.Code)
+			}
+
+			ct := rec.Header().Get("Content-Type")
+			if !strings.Contains(ct, "application/json") {
+				t.Errorf("Content-Type: expected application/json, got %q", ct)
+			}
+
+			if !fakeService.deleteCalled {
+				t.Error("Delete should be called")
+			}
+
+			var errResp struct {
+				Error string `json:"error"`
+			}
+			if err := json.NewDecoder(rec.Body).Decode(&errResp); err != nil {
+				t.Fatalf("failed to decode error response: %v", err)
+			}
+			if errResp.Error == "" {
+				t.Error("expected error message in response body")
+			}
+		})
+	}
+}
+
+func TestEditTask_Success(t *testing.T) {
+	fakeService := &fakeTaskService{}
+	h := NewTaskHandler(fakeService)
+	rec := httptest.NewRecorder()
+	reqBody := models.UserTasks{
+		Title:         "testTitle",
+		Description:   "testDescription",
+		TaskCompleted: true,
+	}
+	bodyBytes, err := json.Marshal(reqBody)
+	if err != nil {
+		t.Fatalf("failed to marshal request: %v", err)
+	}
+	body := bytes.NewReader(bodyBytes)
+	req := newRequestWithTask(http.MethodPut, "/tasks/{id}", "test@gmail.com", body)
+	req.SetPathValue("id", "7")
+
+	h.EditTask(rec, req)
+
+	if rec.Code != http.StatusNoContent {
+		t.Fatalf("expected 204, got %d", rec.Code)
+	}
+
+	if fakeService.requestedUpdateEmail != "test@gmail.com" {
+		t.Errorf("Update got UserEmail %q, want %q", fakeService.requestedUpdateEmail, "test@gmail.com")
+	}
+	if fakeService.requestedUpdateID != 7 {
+		t.Errorf("Update got id %d, want %d", fakeService.requestedUpdateID, 7)
+	}
+	if fakeService.requestedUpdateTask != reqBody {
+		t.Errorf("Update got %+v, want %+v", fakeService.requestedUpdateTask, reqBody)
+	}
+
+	if !fakeService.updateCalled {
+		t.Error("Update should be called")
+	}
+}
+
+func TestEditTask_InvalidJSON(t *testing.T) {
+	tests := []struct {
+		name string
+		body string
+	}{
+		{"empty body", ""},
+		{"malformed json", "{invalid}"},
+		{"wrong type", `{"title": 123}`},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			fakeService := &fakeTaskService{}
+			h := NewTaskHandler(fakeService)
+			rec := httptest.NewRecorder()
+			req := newRequestWithTask(http.MethodPut, "/tasks/{id}", "test@gmail.com", strings.NewReader(tt.body))
+
+			h.EditTask(rec, req)
+
+			if rec.Code != http.StatusBadRequest {
+				t.Fatalf("expected 400, got %d", rec.Code)
+			}
+
+			ct := rec.Header().Get("Content-Type")
+			if !strings.Contains(ct, "application/json") {
+				t.Errorf("Content-Type: expected application/json, got %q", ct)
+			}
+
+			var errResp struct {
+				Error string `json:"error"`
+			}
+			if err := json.NewDecoder(rec.Body).Decode(&errResp); err != nil {
+				t.Fatalf("failed to decode error response: %v", err)
+			}
+			if errResp.Error == "" {
+				t.Error("expected error message in response body")
+			}
+
+			if fakeService.updateCalled {
+				t.Error("Update should not be called for invalid JSON body")
+			}
+		})
+	}
+}
+
+func TestEditTask_Unauthorized(t *testing.T) {
+	fakeService := &fakeTaskService{}
+	h := NewTaskHandler(fakeService)
+	rec := httptest.NewRecorder()
+	reqBody := models.UserTasks{
+		Title:         "testTitle",
+		Description:   "testDescription",
+		TaskCompleted: true,
+	}
+	bodyBytes, err := json.Marshal(reqBody)
+	if err != nil {
+		t.Fatalf("failed to marshal request: %v", err)
+	}
+	body := bytes.NewReader(bodyBytes)
+	req := httptest.NewRequest(http.MethodPut, "/tasks/{id}", body)
+
+	h.EditTask(rec, req)
+
+	if rec.Code != http.StatusUnauthorized {
+		t.Fatalf("expected 401, got %d", rec.Code)
+	}
+
+	ct := rec.Header().Get("Content-Type")
+	if !strings.Contains(ct, "application/json") {
+		t.Errorf("Content-Type: expected application/json, got %q", ct)
+	}
+
+	if fakeService.updateCalled {
+		t.Error("Update should not be called on unauthorized request")
+	}
+
+	var errResp struct {
+		Error string `json:"error"`
+	}
+	if err := json.NewDecoder(rec.Body).Decode(&errResp); err != nil {
+		t.Fatalf("failed to decode error response: %v", err)
+	}
+	if errResp.Error == "" {
+		t.Error("expected error message in response body")
+	}
+}
+
+func TestEditTask_InvalidID(t *testing.T) {
+	fakeService := &fakeTaskService{}
+	h := NewTaskHandler(fakeService)
+	rec := httptest.NewRecorder()
+	reqBody := models.UserTasks{
+		Title:         "testTitle",
+		Description:   "testDescription",
+		TaskCompleted: true,
+	}
+	bodyBytes, err := json.Marshal(reqBody)
+	if err != nil {
+		t.Fatalf("failed to marshal request: %v", err)
+	}
+	body := bytes.NewReader(bodyBytes)
+	req := newRequestWithTask(http.MethodPut, "/tasks/{id}", "test@gmail.com", body)
+	req.SetPathValue("id", "abc")
+
+	h.EditTask(rec, req)
+
+	if rec.Code != http.StatusBadRequest {
+		t.Fatalf("expected 400, got %d", rec.Code)
+	}
+
+	ct := rec.Header().Get("Content-Type")
+	if !strings.Contains(ct, "application/json") {
+		t.Errorf("Content-Type: expected application/json, got %q", ct)
+	}
+
+	if fakeService.updateCalled {
+		t.Error("Update should not be called for invalid id")
+	}
+
+	var errResp struct {
+		Error string `json:"error"`
+	}
+	if err := json.NewDecoder(rec.Body).Decode(&errResp); err != nil {
+		t.Fatalf("failed to decode error response: %v", err)
+	}
+	if errResp.Error == "" {
+		t.Error("expected error message in response body")
+	}
+}
+
+func TestEditTask_Errors(t *testing.T) {
+	tests := []struct {
+		name       string
+		serviceErr error
+	}{
+		{"task not found", models.ErrTaskNotFound},
+		{"server error", errors.New("database unavailable")},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			fakeService := &fakeTaskService{
+				returnedError: tt.serviceErr,
+			}
+			h := NewTaskHandler(fakeService)
+			rec := httptest.NewRecorder()
+			reqBody := models.UserTasks{
+				Title:         "testTitle",
+				Description:   "testDescription",
+				TaskCompleted: true,
+			}
+			bodyBytes, err := json.Marshal(reqBody)
+			if err != nil {
+				t.Fatalf("failed to marshal request: %v", err)
+			}
+			body := bytes.NewReader(bodyBytes)
+			req := newRequestWithTask(http.MethodPut, "/tasks/{id}", "test@gmail.com", body)
+			req.SetPathValue("id", "7")
+
+			h.EditTask(rec, req)
+
+			if rec.Code != http.StatusNotFound && rec.Code != http.StatusInternalServerError {
+				t.Fatalf("expected 404 or 500, got %d", rec.Code)
+			}
+
+			ct := rec.Header().Get("Content-Type")
+			if !strings.Contains(ct, "application/json") {
+				t.Errorf("Content-Type: expected application/json, got %q", ct)
+			}
+
+			if !fakeService.updateCalled {
+				t.Error("Update should be called")
 			}
 
 			var errResp struct {
