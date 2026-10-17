@@ -10,3 +10,11 @@ type UserRepository interface {
 type CompanyRepository interface {
 	EnsureExists(companyID int) error
 }
+
+type TaskRepository interface {
+	CreateTask(title string, description string, email string, completed bool) (int, error)
+	DeleteByID(email string, id int) error
+	EditByID(email string, id int, task models.UserTasks) error
+	GetAllByUser(email string) ([]models.UserTasks, error)
+	GetByID(email string, id int) (models.UserTasks, error)
+}

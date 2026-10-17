@@ -2,14 +2,13 @@ package service
 
 import (
 	"task-manager-api/internal/models"
-	"task-manager-api/internal/repository"
 )
 
 type TaskUserService struct {
-	repo *repository.TaskRepository
+	repo TaskRepository
 }
 
-func NewTaskUserService(repo *repository.TaskRepository) *TaskUserService {
+func NewTaskUserService(repo TaskRepository) *TaskUserService {
 	return &TaskUserService{
 		repo: repo,
 	}
