@@ -21,7 +21,7 @@ func AuthMiddleware(
 			return
 		}
 
-		parts := strings.SplitN(authHeader, " ", 2)
+		parts := strings.Split(authHeader, " ")
 		if len(parts) != 2 || parts[0] != "Bearer" {
 			writeError(w, http.StatusUnauthorized, "invalid authorization header")
 			return
