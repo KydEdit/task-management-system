@@ -49,6 +49,7 @@ func (a *AuthService) ParseToken(tokenString string) (string, error) {
 		func(token *jwt.Token) (interface{}, error) {
 			return a.jwtKey, nil
 		},
+		jwt.WithValidMethods([]string{"HS256"}),
 	)
 
 	if err != nil {
