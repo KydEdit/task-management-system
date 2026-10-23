@@ -1,6 +1,7 @@
 package service
 
 import (
+	"context"
 	"errors"
 	"task-manager-api/internal/models"
 	"testing"
@@ -40,7 +41,7 @@ type fakeTaskRepository struct {
 	returnedError error
 }
 
-func (f *fakeTaskRepository) CreateTask(title string, description string, email string, completed bool) (int, error) {
+func (f *fakeTaskRepository) CreateTask(ctx context.Context, title string, description string, email string, completed bool) (int, error) {
 	f.createCalled = true
 	f.requestedCreateTitle = title
 	f.requestedCreateDesc = description
@@ -50,7 +51,7 @@ func (f *fakeTaskRepository) CreateTask(title string, description string, email 
 	return f.returnedCreateID, f.returnedError
 }
 
-func (f *fakeTaskRepository) DeleteByID(email string, id int) error {
+func (f *fakeTaskRepository) DeleteByID(ctx context.Context, email string, id int) error {
 	f.deleteCalled = true
 	f.requestedDeleteEmail = email
 	f.requestedDeleteID = id
@@ -58,7 +59,7 @@ func (f *fakeTaskRepository) DeleteByID(email string, id int) error {
 	return f.returnedError
 }
 
-func (f *fakeTaskRepository) EditByID(email string, id int, task models.UserTasks) error {
+func (f *fakeTaskRepository) EditByID(ctx context.Context, email string, id int, task models.UserTasks) error {
 	f.updateCalled = true
 	f.requestedUpdateEmail = email
 	f.requestedUpdateID = id
@@ -67,14 +68,14 @@ func (f *fakeTaskRepository) EditByID(email string, id int, task models.UserTask
 	return f.returnedError
 }
 
-func (f *fakeTaskRepository) GetAllByUser(email string) ([]models.UserTasks, error) {
+func (f *fakeTaskRepository) GetAllByUser(ctx context.Context, email string) ([]models.UserTasks, error) {
 	f.searchCalled = true
 	f.requestedSearchEmail = email
 
 	return f.returnedList, f.returnedError
 }
 
-func (f *fakeTaskRepository) GetByID(email string, id int) (models.UserTasks, error) {
+func (f *fakeTaskRepository) GetByID(ctx context.Context, email string, id int) (models.UserTasks, error) {
 	f.searchTaskCalled = true
 	f.requestedTaskEmail = email
 	f.requestedTaskID = id
@@ -86,7 +87,7 @@ func TestCreate_Success(t *testing.T) {
 	fakeTaskRepo := &fakeTaskRepository{returnedCreateID: 42}
 	svc := NewTaskUserService(fakeTaskRepo)
 
-	resp, err := svc.Create(models.UserTasks{
+	resp, err := svc.Create(context.Background(), models.UserTasks{
 		Title:         "testTitle",
 		Description:   "testDescription",
 		UserEmail:     "test@gmail.com",
@@ -128,7 +129,7 @@ func TestCreate_RepositoryError(t *testing.T) {
 	}
 	svc := NewTaskUserService(fakeTaskRepo)
 
-	_, err := svc.Create(models.UserTasks{
+	_, err := svc.Create(context.Background(), models.UserTasks{
 		Title:         "testTitle",
 		Description:   "testDescription",
 		UserEmail:     "test@gmail.com",
@@ -176,7 +177,7 @@ func TestSearch_Success(t *testing.T) {
 	}
 	svc := NewTaskUserService(fakeTaskRepo)
 
-	resp, err := svc.Search("test@gmail.com")
+	resp, err := svc.Search(context.Background(), "test@gmail.com")
 
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
@@ -212,7 +213,7 @@ func TestSearch_RepositoryError(t *testing.T) {
 	fakeTaskRepo := &fakeTaskRepository{returnedError: dbErr}
 	svc := NewTaskUserService(fakeTaskRepo)
 
-	_, err := svc.Search("test@gmail.com")
+	_, err := svc.Search(context.Background(), "test@gmail.com")
 
 	if err == nil {
 		t.Fatal("expected error, got nil")
@@ -239,7 +240,7 @@ func TestSearchTask_Success(t *testing.T) {
 	}
 	svc := NewTaskUserService(fakeTaskRepo)
 
-	resp, err := svc.SearchTask("test@gmail.com", 42)
+	resp, err := svc.SearchTask(context.Background(), "test@gmail.com", 42)
 
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
@@ -286,7 +287,7 @@ func TestSearchTask_RepositoryErrors(t *testing.T) {
 			fakeTaskRepo := &fakeTaskRepository{returnedError: tt.serviceErr}
 			svc := NewTaskUserService(fakeTaskRepo)
 
-			_, err := svc.SearchTask("test@gmail.com", 42)
+			_, err := svc.SearchTask(context.Background(), "test@gmail.com", 42)
 
 			if err == nil {
 				t.Fatal("expected error, got nil")
@@ -307,7 +308,7 @@ func TestDelete_Success(t *testing.T) {
 	fakeTaskRepo := &fakeTaskRepository{}
 	svc := NewTaskUserService(fakeTaskRepo)
 
-	err := svc.Delete("test@gmail.com", 42)
+	err := svc.Delete(context.Background(), "test@gmail.com", 42)
 
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
@@ -338,7 +339,7 @@ func TestDelete_RepositoryErrors(t *testing.T) {
 			fakeTaskRepo := &fakeTaskRepository{returnedError: tt.serviceErr}
 			svc := NewTaskUserService(fakeTaskRepo)
 
-			err := svc.Delete("test@gmail.com", 42)
+			err := svc.Delete(context.Background(), "test@gmail.com", 42)
 
 			if err == nil {
 				t.Fatal("expected error, got nil")
@@ -365,7 +366,7 @@ func TestUpdate_Success(t *testing.T) {
 		TaskCompleted: true,
 	}
 
-	err := svc.Update("test@gmail.com", 42, task)
+	err := svc.Update(context.Background(), "test@gmail.com", 42, task)
 
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
@@ -399,7 +400,7 @@ func TestUpdate_RepositoryErrors(t *testing.T) {
 			fakeTaskRepo := &fakeTaskRepository{returnedError: tt.serviceErr}
 			svc := NewTaskUserService(fakeTaskRepo)
 
-			err := svc.Update("test@gmail.com", 42, models.UserTasks{
+			err := svc.Update(context.Background(), "test@gmail.com", 42, models.UserTasks{
 				Title:         "testTitle42",
 				Description:   "testDescription42",
 				UserEmail:     "test@gmail.com",

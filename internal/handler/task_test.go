@@ -43,14 +43,14 @@ type fakeTaskService struct {
 	returnedError    error
 }
 
-func (f *fakeTaskService) Create(task models.UserTasks) (models.UserTasks, error) {
+func (f *fakeTaskService) Create(ctx context.Context, task models.UserTasks) (models.UserTasks, error) {
 	f.createCalled = true
 	f.requestedTask = task
 
 	return f.returnedResponse, f.returnedError
 }
 
-func (f *fakeTaskService) Delete(email string, id int) error {
+func (f *fakeTaskService) Delete(ctx context.Context, email string, id int) error {
 	f.deleteCalled = true
 	f.requestedDeleteEmail = email
 	f.requestedDeleteID = id
@@ -58,14 +58,14 @@ func (f *fakeTaskService) Delete(email string, id int) error {
 	return f.returnedError
 }
 
-func (f *fakeTaskService) Search(email string) ([]models.UserTasks, error) {
+func (f *fakeTaskService) Search(ctx context.Context, email string) ([]models.UserTasks, error) {
 	f.searchCalled = true
 	f.requestedSearchEmail = email
 
 	return f.returnedList, f.returnedError
 }
 
-func (f *fakeTaskService) SearchTask(email string, id int) (models.UserTasks, error) {
+func (f *fakeTaskService) SearchTask(ctx context.Context, email string, id int) (models.UserTasks, error) {
 	f.searchTaskCalled = true
 	f.requestedTaskEmail = email
 	f.requestedTaskID = id
@@ -73,7 +73,7 @@ func (f *fakeTaskService) SearchTask(email string, id int) (models.UserTasks, er
 	return f.returnedResponse, f.returnedError
 }
 
-func (f *fakeTaskService) Update(email string, id int, task models.UserTasks) error {
+func (f *fakeTaskService) Update(ctx context.Context, email string, id int, task models.UserTasks) error {
 	f.updateCalled = true
 	f.requestedUpdateEmail = email
 	f.requestedUpdateID = id

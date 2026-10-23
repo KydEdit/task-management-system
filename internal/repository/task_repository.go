@@ -19,11 +19,11 @@ func NewTaskRepository(conn *pgx.Conn) *TaskRepository {
 	}
 }
 
-func (r *TaskRepository) CreateTask(title, description, email string, completed bool) (int, error) {
+func (r *TaskRepository) CreateTask(ctx context.Context, title, description, email string, completed bool) (int, error) {
 	var id int
 
 	err := r.conn.QueryRow(
-		context.Background(),
+		ctx,
 		`
 		INSERT INTO tasks (title, description, user_email, completed) 
 		VALUES ($1, $2, $3, $4) 
@@ -39,10 +39,10 @@ func (r *TaskRepository) CreateTask(title, description, email string, completed 
 	return id, nil
 }
 
-func (r *TaskRepository) GetAllByUser(email string) ([]models.UserTasks, error) {
+func (r *TaskRepository) GetAllByUser(ctx context.Context, email string) ([]models.UserTasks, error) {
 
 	rows, err := r.conn.Query(
-		context.Background(),
+		ctx,
 		`
 		SELECT id, title, description, user_email, completed 
 		FROM tasks 
@@ -74,11 +74,11 @@ func (r *TaskRepository) GetAllByUser(email string) ([]models.UserTasks, error) 
 	return tasks, nil
 }
 
-func (r *TaskRepository) GetByID(email string, id int) (models.UserTasks, error) {
+func (r *TaskRepository) GetByID(ctx context.Context, email string, id int) (models.UserTasks, error) {
 	var task models.UserTasks
 
 	err := r.conn.QueryRow(
-		context.Background(),
+		ctx,
 		`
 		SELECT id, title, description, user_email, completed 
 		FROM tasks 
@@ -103,10 +103,10 @@ func (r *TaskRepository) GetByID(email string, id int) (models.UserTasks, error)
 	return task, nil
 }
 
-func (r *TaskRepository) DeleteByID(email string, id int) error {
+func (r *TaskRepository) DeleteByID(ctx context.Context, email string, id int) error {
 
 	commandTag, err := r.conn.Exec(
-		context.Background(),
+		ctx,
 		`
 		DELETE FROM tasks 
 		WHERE user_email = $1 AND id = $2
@@ -125,10 +125,10 @@ func (r *TaskRepository) DeleteByID(email string, id int) error {
 	return nil
 }
 
-func (r *TaskRepository) EditByID(email string, id int, task models.UserTasks) error {
+func (r *TaskRepository) EditByID(ctx context.Context, email string, id int, task models.UserTasks) error {
 
 	commandTag, err := r.conn.Exec(
-		context.Background(),
+		ctx,
 		`
 		UPDATE tasks SET title = $1, description = $2, completed = $3 
 		WHERE user_email = $4 AND id = $5

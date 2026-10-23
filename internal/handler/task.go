@@ -20,6 +20,7 @@ func NewTaskHandler(s TaskService) *TaskHandler {
 
 func (h *TaskHandler) CreateTask(w http.ResponseWriter, r *http.Request) {
 	var task models.UserTasks
+	ctx := r.Context()
 
 	err := json.NewDecoder(r.Body).Decode(&task)
 	if err != nil {
@@ -35,7 +36,7 @@ func (h *TaskHandler) CreateTask(w http.ResponseWriter, r *http.Request) {
 
 	task.UserEmail = email
 
-	createdTask, err := h.serviceT.Create(task)
+	createdTask, err := h.serviceT.Create(ctx, task)
 	if err != nil {
 		writeError(w, http.StatusInternalServerError, "internal server error")
 		return
@@ -45,7 +46,9 @@ func (h *TaskHandler) CreateTask(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *TaskHandler) GetTask(w http.ResponseWriter, r *http.Request) {
-	email, ok := r.Context().Value(userContextKey).(string)
+	ctx := r.Context()
+
+	email, ok := ctx.Value(userContextKey).(string)
 	if !ok {
 		writeError(w, http.StatusUnauthorized, "unauthorized")
 		return
@@ -54,7 +57,7 @@ func (h *TaskHandler) GetTask(w http.ResponseWriter, r *http.Request) {
 	idStr := r.PathValue("id")
 
 	if idStr == "" {
-		tasks, err := h.serviceT.Search(email)
+		tasks, err := h.serviceT.Search(ctx, email)
 		if err != nil {
 			writeError(w, http.StatusInternalServerError, "failed to get tasks")
 			return
@@ -70,7 +73,7 @@ func (h *TaskHandler) GetTask(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	task, err := h.serviceT.SearchTask(email, urlintid)
+	task, err := h.serviceT.SearchTask(ctx, email, urlintid)
 	if err != nil {
 		if errors.Is(err, models.ErrTaskNotFound) {
 			writeError(w, http.StatusNotFound, "task not found")
@@ -84,7 +87,9 @@ func (h *TaskHandler) GetTask(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *TaskHandler) DeleteTask(w http.ResponseWriter, r *http.Request) {
-	email, ok := r.Context().Value(userContextKey).(string)
+	ctx := r.Context()
+
+	email, ok := ctx.Value(userContextKey).(string)
 	if !ok {
 		writeError(w, http.StatusUnauthorized, "unauthorized")
 		return
@@ -98,7 +103,7 @@ func (h *TaskHandler) DeleteTask(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	err = h.serviceT.Delete(email, id)
+	err = h.serviceT.Delete(ctx, email, id)
 	if err != nil {
 		if errors.Is(err, models.ErrTaskNotFound) {
 			writeError(w, http.StatusNotFound, "task not found")
@@ -113,6 +118,7 @@ func (h *TaskHandler) DeleteTask(w http.ResponseWriter, r *http.Request) {
 
 func (h *TaskHandler) EditTask(w http.ResponseWriter, r *http.Request) {
 	var task models.UserTasks
+	ctx := r.Context()
 
 	err := json.NewDecoder(r.Body).Decode(&task)
 	if err != nil {
@@ -120,7 +126,7 @@ func (h *TaskHandler) EditTask(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	email, ok := r.Context().Value(userContextKey).(string)
+	email, ok := ctx.Value(userContextKey).(string)
 	if !ok {
 		writeError(w, http.StatusUnauthorized, "unauthorized")
 		return
@@ -134,7 +140,7 @@ func (h *TaskHandler) EditTask(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	err = h.serviceT.Update(email, id, task)
+	err = h.serviceT.Update(ctx, email, id, task)
 	if err != nil {
 		if errors.Is(err, models.ErrTaskNotFound) {
 			writeError(w, http.StatusNotFound, "task not found")

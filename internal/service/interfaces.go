@@ -15,9 +15,9 @@ type CompanyRepository interface {
 }
 
 type TaskRepository interface {
-	CreateTask(title string, description string, email string, completed bool) (int, error)
-	DeleteByID(email string, id int) error
-	EditByID(email string, id int, task models.UserTasks) error
-	GetAllByUser(email string) ([]models.UserTasks, error)
-	GetByID(email string, id int) (models.UserTasks, error)
+	CreateTask(ctx context.Context, title string, description string, email string, completed bool) (int, error)
+	DeleteByID(ctx context.Context, email string, id int) error
+	EditByID(ctx context.Context, email string, id int, task models.UserTasks) error
+	GetAllByUser(ctx context.Context, email string) ([]models.UserTasks, error)
+	GetByID(ctx context.Context, email string, id int) (models.UserTasks, error)
 }
