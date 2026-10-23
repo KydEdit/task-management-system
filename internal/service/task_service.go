@@ -2,6 +2,7 @@ package service
 
 import (
 	"context"
+	"strings"
 	"task-manager-api/internal/models"
 )
 
@@ -16,10 +17,12 @@ func NewTaskUserService(repo TaskRepository) *TaskUserService {
 }
 
 func (s *TaskUserService) Create(ctx context.Context, task models.UserTasks) (models.UserTasks, error) {
-	if task.Title == "" || len(task.Title) > 255 {
+	title := strings.TrimSpace(task.Title)
+	if title == "" || len(title) > 255 {
 		return models.UserTasks{}, models.ErrInvalidTitle
 	}
-	if task.Description == "" || len(task.Description) > 1000 {
+	description := strings.TrimSpace(task.Description)
+	if description == "" || len(description) > 1000 {
 		return models.UserTasks{}, models.ErrInvalidDescription
 	}
 
