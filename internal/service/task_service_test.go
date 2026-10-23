@@ -159,6 +159,22 @@ func TestCreate_Validation(t *testing.T) {
 			},
 			expectedErr: models.ErrInvalidDescription,
 		},
+		{
+			name: "whitespace title",
+			task: models.UserTasks{
+				Title:       "   ",
+				Description: "desc",
+			},
+			expectedErr: models.ErrInvalidTitle,
+		},
+		{
+			name: "whitespace description",
+			task: models.UserTasks{
+				Title:       "title",
+				Description: "   ",
+			},
+			expectedErr: models.ErrInvalidDescription,
+		},
 	}
 
 	for _, tt := range tests {

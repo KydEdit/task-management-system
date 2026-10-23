@@ -26,7 +26,7 @@ func (s *TaskUserService) Create(ctx context.Context, task models.UserTasks) (mo
 		return models.UserTasks{}, models.ErrInvalidDescription
 	}
 
-	id, err := s.repo.CreateTask(ctx, task.Title, task.Description, task.UserEmail, task.TaskCompleted)
+	id, err := s.repo.CreateTask(ctx, title, description, task.UserEmail, task.TaskCompleted)
 	if err != nil {
 		return models.UserTasks{}, err
 	}
