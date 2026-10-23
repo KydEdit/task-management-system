@@ -16,17 +16,26 @@ func NewTaskUserService(repo TaskRepository) *TaskUserService {
 	}
 }
 
-func (s *TaskUserService) Create(ctx context.Context, task models.UserTasks) (models.UserTasks, error) {
+func validateTask(task *models.UserTasks) error {
 	title := strings.TrimSpace(task.Title)
 	if title == "" || len(title) > 255 {
-		return models.UserTasks{}, models.ErrInvalidTitle
+		return models.ErrInvalidTitle
 	}
-	description := strings.TrimSpace(task.Description)
-	if description == "" || len(description) > 1000 {
-		return models.UserTasks{}, models.ErrInvalidDescription
+	desc := strings.TrimSpace(task.Description)
+	if desc == "" || len(desc) > 1000 {
+		return models.ErrInvalidDescription
+	}
+	task.Title = title
+	task.Description = desc
+	return nil
+}
+
+func (s *TaskUserService) Create(ctx context.Context, task models.UserTasks) (models.UserTasks, error) {
+	if err := validateTask(&task); err != nil {
+		return models.UserTasks{}, err
 	}
 
-	id, err := s.repo.CreateTask(ctx, title, description, task.UserEmail, task.TaskCompleted)
+	id, err := s.repo.CreateTask(ctx, task.Title, task.Description, task.UserEmail, task.TaskCompleted)
 	if err != nil {
 		return models.UserTasks{}, err
 	}
@@ -61,6 +70,10 @@ func (s *TaskUserService) Delete(ctx context.Context, email string, id int) erro
 }
 
 func (s *TaskUserService) Update(ctx context.Context, email string, id int, task models.UserTasks) error {
+	if err := validateTask(&task); err != nil {
+		return err
+	}
+
 	return s.repo.EditByID(ctx, email, id, task)
 
 }
