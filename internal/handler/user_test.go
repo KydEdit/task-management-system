@@ -37,7 +37,7 @@ type fakeAuthService struct {
 	returnedError error
 }
 
-func (f *fakeUserService) Login(email string, password string) (models.UserResponse, error) {
+func (f *fakeUserService) Login(ctx context.Context, email string, password string) (models.UserResponse, error) {
 	f.loginCalled = true
 	f.requestedLoginEmail = email
 	f.requestedLogin.email = email
@@ -46,14 +46,14 @@ func (f *fakeUserService) Login(email string, password string) (models.UserRespo
 	return f.returnedResponse, f.returnedError
 }
 
-func (f *fakeUserService) Me(email string) (models.UserResponse, error) {
+func (f *fakeUserService) Me(ctx context.Context, email string) (models.UserResponse, error) {
 	f.meCalled = true
 	f.requestedMeEmail = email
 
 	return f.returnedResponse, f.returnedError
 }
 
-func (f *fakeUserService) Register(user models.RegisterRequest) (models.UserResponse, error) {
+func (f *fakeUserService) Register(ctx context.Context, user models.RegisterRequest) (models.UserResponse, error) {
 	f.registerCalled = true
 	f.requestedRegisterEmail = user.Email
 	f.requestedRegisterPassword = user.Password

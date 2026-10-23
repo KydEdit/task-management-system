@@ -25,6 +25,7 @@ func NewUserHandler(
 
 func (h *UserHandler) RegisterUser(w http.ResponseWriter, r *http.Request) {
 	var user models.RegisterRequest
+	ctx := r.Context()
 
 	err := json.NewDecoder(r.Body).Decode(&user)
 	if err != nil {
@@ -32,7 +33,7 @@ func (h *UserHandler) RegisterUser(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	createdUser, err := h.serviceU.Register(user)
+	createdUser, err := h.serviceU.Register(ctx, user)
 	if err != nil {
 		if errors.Is(err, models.ErrInvalidEmail) {
 			writeError(w, http.StatusBadRequest, "invalid email")
@@ -63,6 +64,7 @@ func (h *UserHandler) RegisterUser(w http.ResponseWriter, r *http.Request) {
 
 func (h *UserHandler) LoginUser(w http.ResponseWriter, r *http.Request) {
 	var user models.LoginRequest
+	ctx := r.Context()
 
 	err := json.NewDecoder(r.Body).Decode(&user)
 	if err != nil {
@@ -70,7 +72,7 @@ func (h *UserHandler) LoginUser(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	foundUser, err := h.serviceU.Login(user.Email, user.Password)
+	foundUser, err := h.serviceU.Login(ctx, user.Email, user.Password)
 	if err != nil {
 		if errors.Is(err, models.ErrInvalidCredentials) {
 			writeError(w, http.StatusUnauthorized, "invalid email or password")
@@ -91,12 +93,14 @@ func (h *UserHandler) LoginUser(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *UserHandler) GetMe(w http.ResponseWriter, r *http.Request) {
-	email, ok := r.Context().Value(userContextKey).(string)
+	ctx := r.Context()
+
+	email, ok := ctx.Value(userContextKey).(string)
 	if !ok {
 		writeError(w, http.StatusUnauthorized, "unauthorized")
 		return
 	}
-	meInfo, err := h.serviceU.Me(email)
+	meInfo, err := h.serviceU.Me(ctx, email)
 	if err != nil {
 		if errors.Is(err, models.ErrUserNotFound) {
 			writeError(w, http.StatusUnauthorized, "user no longer exists")

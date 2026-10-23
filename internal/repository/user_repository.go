@@ -20,12 +20,12 @@ func NewUserRepository(conn *pgx.Conn) *UserRepository {
 	}
 }
 
-func (r *UserRepository) RegisterUser(email, password string, companyID int) (int, error) {
+func (r *UserRepository) RegisterUser(ctx context.Context, email, password string, companyID int) (int, error) {
 	var id int
 	var pgErr *pgconn.PgError
 
 	err := r.conn.QueryRow(
-		context.Background(),
+		ctx,
 		`
 		INSERT INTO users (user_email, password, company_id)
 		VALUES ($1, $2, $3)
@@ -49,11 +49,11 @@ func (r *UserRepository) RegisterUser(email, password string, companyID int) (in
 	return id, nil
 }
 
-func (r *UserRepository) GetByEmail(email string) (models.User, error) {
+func (r *UserRepository) GetByEmail(ctx context.Context, email string) (models.User, error) {
 	var user models.User
 
 	err := r.conn.QueryRow(
-		context.Background(),
+		ctx,
 		`
 		SELECT id, user_email, password, company_id
 		FROM users

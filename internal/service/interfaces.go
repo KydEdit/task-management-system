@@ -1,10 +1,13 @@
 package service
 
-import "task-manager-api/internal/models"
+import (
+	"context"
+	"task-manager-api/internal/models"
+)
 
 type UserRepository interface {
-	RegisterUser(email, password string, companyID int) (int, error)
-	GetByEmail(email string) (models.User, error)
+	RegisterUser(ctx context.Context, email, password string, companyID int) (int, error)
+	GetByEmail(ctx context.Context, email string) (models.User, error)
 }
 
 type CompanyRepository interface {

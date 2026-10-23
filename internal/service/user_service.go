@@ -1,6 +1,7 @@
 package service
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"net/mail"
@@ -22,7 +23,7 @@ func NewUserService(repo UserRepository, companyRepo CompanyRepository) *UserSer
 	}
 }
 
-func (s *UserService) Register(user models.RegisterRequest) (models.UserResponse, error) {
+func (s *UserService) Register(ctx context.Context, user models.RegisterRequest) (models.UserResponse, error) {
 	var resp models.UserResponse
 
 	email := strings.TrimSpace(user.Email)
@@ -53,7 +54,7 @@ func (s *UserService) Register(user models.RegisterRequest) (models.UserResponse
 	}
 	hashedPassword := string(hashed)
 
-	id, err := s.repo.RegisterUser(email, hashedPassword, user.CompanyID)
+	id, err := s.repo.RegisterUser(ctx, email, hashedPassword, user.CompanyID)
 	if err != nil {
 		return models.UserResponse{}, err
 	}
@@ -64,10 +65,10 @@ func (s *UserService) Register(user models.RegisterRequest) (models.UserResponse
 	return resp, nil
 }
 
-func (s *UserService) Login(email, password string) (models.UserResponse, error) {
+func (s *UserService) Login(ctx context.Context, email, password string) (models.UserResponse, error) {
 	var resp models.UserResponse
 
-	user, err := s.repo.GetByEmail(email)
+	user, err := s.repo.GetByEmail(ctx, email)
 	if err != nil {
 		if errors.Is(err, models.ErrUserNotFound) {
 			return models.UserResponse{}, models.ErrInvalidCredentials
@@ -89,10 +90,10 @@ func (s *UserService) Login(email, password string) (models.UserResponse, error)
 	return resp, nil
 }
 
-func (s *UserService) Me(email string) (models.UserResponse, error) {
+func (s *UserService) Me(ctx context.Context, email string) (models.UserResponse, error) {
 	var resp models.UserResponse
 
-	user, err := s.repo.GetByEmail(email)
+	user, err := s.repo.GetByEmail(ctx, email)
 	if err != nil {
 		if errors.Is(err, models.ErrUserNotFound) {
 			return models.UserResponse{}, models.ErrUserNotFound

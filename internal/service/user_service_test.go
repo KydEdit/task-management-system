@@ -1,6 +1,7 @@
 package service
 
 import (
+	"context"
 	"errors"
 	"strings"
 	"task-manager-api/internal/models"
@@ -31,7 +32,7 @@ type fakeCompanyRepository struct {
 	returnedError error
 }
 
-func (f *fakeUserRepository) RegisterUser(email, password string, companyID int) (int, error) {
+func (f *fakeUserRepository) RegisterUser(ctx context.Context, email, password string, companyID int) (int, error) {
 	f.registerCalled = true
 
 	f.registeredEmail = email
@@ -41,7 +42,7 @@ func (f *fakeUserRepository) RegisterUser(email, password string, companyID int)
 	return f.returnedID, f.returnedError
 }
 
-func (f *fakeUserRepository) GetByEmail(email string) (models.User, error) {
+func (f *fakeUserRepository) GetByEmail(ctx context.Context, email string) (models.User, error) {
 	f.requestedEmail = email
 
 	return f.returnedUser, f.returnedError
@@ -60,7 +61,7 @@ func TestRegisterUser_Success(t *testing.T) {
 	fakeCompanyRepo := &fakeCompanyRepository{}
 	svc := NewUserService(fakeUserRepo, fakeCompanyRepo)
 
-	resp, err := svc.Register(models.RegisterRequest{
+	resp, err := svc.Register(context.Background(), models.RegisterRequest{
 		Email:     "test@gmail.com",
 		Password:  "password123",
 		CompanyID: 7,
@@ -104,7 +105,7 @@ func TestRegisterUser_CompanyNotFound(t *testing.T) {
 	fakeCompanyRepo := &fakeCompanyRepository{returnedError: models.ErrCompanyNotFound}
 	svc := NewUserService(fakeUserRepo, fakeCompanyRepo)
 
-	_, err := svc.Register(models.RegisterRequest{
+	_, err := svc.Register(context.Background(), models.RegisterRequest{
 		Email:     "test@gmail.com",
 		Password:  "password123",
 		CompanyID: 7,
@@ -128,7 +129,7 @@ func TestRegisterUser_UserAlreadyExists(t *testing.T) {
 	fakeCompanyRepo := &fakeCompanyRepository{}
 	svc := NewUserService(fakeUserRepo, fakeCompanyRepo)
 
-	_, err := svc.Register(models.RegisterRequest{
+	_, err := svc.Register(context.Background(), models.RegisterRequest{
 		Email:     "test@gmail.com",
 		Password:  "password123",
 		CompanyID: 7,
@@ -154,7 +155,7 @@ func TestRegisterUser_RepositoryError(t *testing.T) {
 	fakeCompanyRepo := &fakeCompanyRepository{}
 	svc := NewUserService(fakeUserRepo, fakeCompanyRepo)
 
-	_, err := svc.Register(models.RegisterRequest{
+	_, err := svc.Register(context.Background(), models.RegisterRequest{
 		Email:     "test@gmail.com",
 		Password:  "password123",
 		CompanyID: 7,
@@ -232,7 +233,7 @@ func TestRegisterUser_Validation(t *testing.T) {
 			fakeCompanyRepo := &fakeCompanyRepository{}
 			svc := NewUserService(fakeUserRepo, fakeCompanyRepo)
 
-			_, err := svc.Register(tt.request)
+			_, err := svc.Register(context.Background(), tt.request)
 
 			if err == nil {
 				t.Fatal("expected error, got nil")
@@ -268,7 +269,7 @@ func TestLogin_Success(t *testing.T) {
 	fakeCompanyRepo := &fakeCompanyRepository{}
 	svc := NewUserService(fakeUserRepo, fakeCompanyRepo)
 
-	resp, err := svc.Login("test@gmail.com", "password123")
+	resp, err := svc.Login(context.Background(), "test@gmail.com", "password123")
 
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
@@ -294,7 +295,7 @@ func TestLogin_UserNotFound(t *testing.T) {
 	fakeCompanyRepo := &fakeCompanyRepository{}
 	svc := NewUserService(fakeUserRepo, fakeCompanyRepo)
 
-	_, err := svc.Login("test@gmail.com", "password123")
+	_, err := svc.Login(context.Background(), "test@gmail.com", "password123")
 
 	if err == nil {
 		t.Fatal("expected error, got nil")
@@ -327,7 +328,7 @@ func TestLogin_InvalidPassword(t *testing.T) {
 	fakeCompanyRepo := &fakeCompanyRepository{}
 	svc := NewUserService(fakeUserRepo, fakeCompanyRepo)
 
-	_, err = svc.Login("test@gmail.com", "wrong-password")
+	_, err = svc.Login(context.Background(), "test@gmail.com", "wrong-password")
 
 	if err == nil {
 		t.Fatal("expected error, got nil")
@@ -351,7 +352,7 @@ func TestLogin_RepositoryError(t *testing.T) {
 	fakeCompanyRepo := &fakeCompanyRepository{}
 	svc := NewUserService(fakeUserRepo, fakeCompanyRepo)
 
-	_, err := svc.Login("test@gmail.com", "password123")
+	_, err := svc.Login(context.Background(), "test@gmail.com", "password123")
 
 	if err == nil {
 		t.Fatal("expected error, got nil")
@@ -379,7 +380,7 @@ func TestMe_Success(t *testing.T) {
 	fakeCompanyRepo := &fakeCompanyRepository{}
 	svc := NewUserService(fakeUserRepo, fakeCompanyRepo)
 
-	resp, err := svc.Me("test@gmail.com")
+	resp, err := svc.Me(context.Background(), "test@gmail.com")
 
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
@@ -409,7 +410,7 @@ func TestMe_UserNotFound(t *testing.T) {
 	fakeCompanyRepo := &fakeCompanyRepository{}
 	svc := NewUserService(fakeUserRepo, fakeCompanyRepo)
 
-	_, err := svc.Me("test@gmail.com")
+	_, err := svc.Me(context.Background(), "test@gmail.com")
 
 	if err == nil {
 		t.Fatal("expected error, got nil")
@@ -433,7 +434,7 @@ func TestMe_RepositoryError(t *testing.T) {
 	fakeCompanyRepo := &fakeCompanyRepository{}
 	svc := NewUserService(fakeUserRepo, fakeCompanyRepo)
 
-	_, err := svc.Me("test@gmail.com")
+	_, err := svc.Me(context.Background(), "test@gmail.com")
 
 	if err == nil {
 		t.Fatal("expected error, got nil")

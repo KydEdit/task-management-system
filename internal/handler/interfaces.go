@@ -1,11 +1,14 @@
 package handler
 
-import "task-manager-api/internal/models"
+import (
+	"context"
+	"task-manager-api/internal/models"
+)
 
 type UserService interface {
-	Login(email string, password string) (models.UserResponse, error)
-	Me(email string) (models.UserResponse, error)
-	Register(user models.RegisterRequest) (models.UserResponse, error)
+	Login(ctx context.Context, email string, password string) (models.UserResponse, error)
+	Me(ctx context.Context, email string) (models.UserResponse, error)
+	Register(ctx context.Context, user models.RegisterRequest) (models.UserResponse, error)
 }
 
 type AuthService interface {
