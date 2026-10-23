@@ -16,6 +16,12 @@ func NewTaskUserService(repo TaskRepository) *TaskUserService {
 }
 
 func (s *TaskUserService) Create(ctx context.Context, task models.UserTasks) (models.UserTasks, error) {
+	if task.Title == "" || len(task.Title) > 255 {
+		return models.UserTasks{}, models.ErrInvalidTitle
+	}
+	if task.Description == "" || len(task.Description) > 1000 {
+		return models.UserTasks{}, models.ErrInvalidDescription
+	}
 
 	id, err := s.repo.CreateTask(ctx, task.Title, task.Description, task.UserEmail, task.TaskCompleted)
 	if err != nil {

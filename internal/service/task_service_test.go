@@ -3,6 +3,7 @@ package service
 import (
 	"context"
 	"errors"
+	"strings"
 	"task-manager-api/internal/models"
 	"testing"
 )
@@ -117,6 +118,68 @@ func TestCreate_Success(t *testing.T) {
 
 	if !fakeTaskRepo.createCalled {
 		t.Error("CreateTask should be called")
+	}
+}
+
+func TestCreate_Validation(t *testing.T) {
+	tests := []struct {
+		name        string
+		task        models.UserTasks
+		expectedErr error
+	}{
+		{
+			name: "empty title",
+			task: models.UserTasks{
+				Title:       "",
+				Description: "desc",
+			},
+			expectedErr: models.ErrInvalidTitle,
+		},
+		{
+			name: "title too long",
+			task: models.UserTasks{
+				Title:       strings.Repeat("a", 256),
+				Description: "desc",
+			},
+			expectedErr: models.ErrInvalidTitle,
+		},
+		{
+			name: "empty description",
+			task: models.UserTasks{
+				Title:       "title",
+				Description: "",
+			},
+			expectedErr: models.ErrInvalidDescription,
+		},
+		{
+			name: "description too long",
+			task: models.UserTasks{
+				Title:       "title",
+				Description: strings.Repeat("a", 1001),
+			},
+			expectedErr: models.ErrInvalidDescription,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			fakeRepo := &fakeTaskRepository{}
+			svc := NewTaskUserService(fakeRepo)
+
+			_, err := svc.Create(context.Background(), tt.task)
+
+			if err == nil {
+				t.Fatal("expected error, got nil")
+			}
+
+			if !errors.Is(err, tt.expectedErr) {
+				t.Errorf("expected %v, got %v", tt.expectedErr, err)
+			}
+
+			if fakeRepo.createCalled {
+				t.Error("CreateTask should not be called for invalid input")
+			}
+		})
 	}
 }
 

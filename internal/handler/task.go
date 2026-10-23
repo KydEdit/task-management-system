@@ -38,6 +38,14 @@ func (h *TaskHandler) CreateTask(w http.ResponseWriter, r *http.Request) {
 
 	createdTask, err := h.serviceT.Create(ctx, task)
 	if err != nil {
+		if errors.Is(err, models.ErrInvalidTitle) {
+			writeError(w, http.StatusBadRequest, "invalid title")
+			return
+		}
+		if errors.Is(err, models.ErrInvalidDescription) {
+			writeError(w, http.StatusBadRequest, "invalid description")
+			return
+		}
 		writeError(w, http.StatusInternalServerError, "internal server error")
 		return
 	}

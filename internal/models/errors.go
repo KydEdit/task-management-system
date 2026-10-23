@@ -11,4 +11,7 @@ var (
 	ErrInvalidCompanyID   = errors.New("invalid company")
 	ErrUserAlreadyExists  = errors.New("user with this email already exists")
 	ErrCompanyNotFound    = errors.New("company not found")
+
+	ErrInvalidTitle       = errors.New("invalid title")
+	ErrInvalidDescription = errors.New("invalid description")
 )
