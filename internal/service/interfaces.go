@@ -11,7 +11,7 @@ type UserRepository interface {
 }
 
 type CompanyRepository interface {
-	EnsureExists(companyID int) error
+	EnsureExists(ctx context.Context, companyID int) error
 }
 
 type TaskRepository interface {

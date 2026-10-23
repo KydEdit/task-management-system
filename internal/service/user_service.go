@@ -44,7 +44,7 @@ func (s *UserService) Register(ctx context.Context, user models.RegisterRequest)
 		return models.UserResponse{}, models.ErrInvalidCompanyID
 	}
 
-	if err := s.companyRepo.EnsureExists(user.CompanyID); err != nil {
+	if err := s.companyRepo.EnsureExists(ctx, user.CompanyID); err != nil {
 		return models.UserResponse{}, fmt.Errorf("validate company: %w", err)
 	}
 

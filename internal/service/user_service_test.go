@@ -48,7 +48,7 @@ func (f *fakeUserRepository) GetByEmail(ctx context.Context, email string) (mode
 	return f.returnedUser, f.returnedError
 }
 
-func (f *fakeCompanyRepository) EnsureExists(companyID int) error {
+func (f *fakeCompanyRepository) EnsureExists(ctx context.Context, companyID int) error {
 	f.ensureCalled = true
 
 	f.checkedCompanyID = companyID

@@ -19,11 +19,11 @@ func NewCompanyRepository(conn *pgx.Conn) *CompanyRepository {
 	}
 }
 
-func (r *CompanyRepository) EnsureExists(companyID int) error {
+func (r *CompanyRepository) EnsureExists(ctx context.Context, companyID int) error {
 	var dummy int
 
 	err := r.conn.QueryRow(
-		context.Background(),
+		ctx,
 		`
 		SELECT id
 		FROM companies
