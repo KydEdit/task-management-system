@@ -27,7 +27,7 @@ func (r *UserRepository) RegisterUser(ctx context.Context, email, password strin
 	err := r.conn.QueryRow(
 		ctx,
 		`
-		INSERT INTO users (user_email, password, company_id)
+		INSERT INTO users (email, password, company_id)
 		VALUES ($1, $2, $3)
 		RETURNING id
 		`,
@@ -55,9 +55,9 @@ func (r *UserRepository) GetByEmail(ctx context.Context, email string) (models.U
 	err := r.conn.QueryRow(
 		ctx,
 		`
-		SELECT id, user_email, password, company_id
+		SELECT id, email, password, company_id
 		FROM users
-		WHERE user_email = $1
+		WHERE email = $1
 		`,
 		email,
 	).Scan(
