@@ -12,14 +12,14 @@ type UserService interface {
 }
 
 type AuthService interface {
-	GenerateToken(email string) (string, error)
-	ParseToken(tokenString string) (string, error)
+	GenerateToken(email string, userID int) (string, error)
+	ParseToken(tokenString string) (string, int, error)
 }
 
 type TaskService interface {
 	Create(ctx context.Context, task models.UserTasks) (models.UserTasks, error)
-	Delete(ctx context.Context, email string, id int) error
-	Search(ctx context.Context, email string) ([]models.UserTasks, error)
-	SearchTask(ctx context.Context, email string, id int) (models.UserTasks, error)
-	Update(ctx context.Context, email string, id int, task models.UserTasks) error
+	Delete(ctx context.Context, userID int, id int) error
+	Search(ctx context.Context, userID int) ([]models.UserTasks, error)
+	SearchTask(ctx context.Context, userID int, id int) (models.UserTasks, error)
+	Update(ctx context.Context, userID int, id int, task models.UserTasks) error
 }

@@ -36,6 +36,6 @@ type UserTasks struct {
 	ID            int    `json:"id"`
 	Title         string `json:"title"`
 	Description   string `json:"description"`
-	UserEmail     string `json:"-"`
+	UserID        int    `json:"-"`
 	TaskCompleted bool   `json:"completed"`
 }

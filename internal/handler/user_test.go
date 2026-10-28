@@ -26,12 +26,16 @@ type fakeUserService struct {
 }
 
 type fakeAuthService struct {
+	// GenerateToken
 	requestedEmail      string
+	requestedUserID     int
 	generateTokenCalled bool
 
+	// ParseToken
 	parseTokenCalled bool
 	requestedToken   string
 	returnedClaims   string
+	returnedUserID   int
 
 	returnedToken string
 	returnedError error
@@ -61,18 +65,19 @@ func (f *fakeUserService) Register(ctx context.Context, user models.RegisterRequ
 	return f.returnedResponse, f.returnedError
 }
 
-func (f *fakeAuthService) GenerateToken(email string) (string, error) {
+func (f *fakeAuthService) GenerateToken(email string, userID int) (string, error) {
 	f.generateTokenCalled = true
 	f.requestedEmail = email
+	f.requestedUserID = userID
 
 	return f.returnedToken, f.returnedError
 }
 
-func (f *fakeAuthService) ParseToken(tokenString string) (string, error) {
+func (f *fakeAuthService) ParseToken(tokenString string) (string, int, error) {
 	f.parseTokenCalled = true
 	f.requestedToken = tokenString
 
-	return f.returnedClaims, f.returnedError
+	return f.returnedClaims, f.returnedUserID, f.returnedError
 }
 
 func newRequestWithUser(email string) *http.Request {
@@ -469,6 +474,9 @@ func TestLoginUser_Success(t *testing.T) {
 	if fakeAuth.requestedEmail != "test@gmail.com" {
 		t.Errorf("GenerateToken requestedEmail: expected %q, got %q", "test@gmail.com", fakeAuth.requestedEmail)
 	}
+	if fakeAuth.requestedUserID != 42 {
+		t.Errorf("GenerateToken requestedUserID: expected 42, got %d", fakeAuth.requestedUserID)
+	}
 	if !fakeAuth.generateTokenCalled {
 		t.Error("GenerateToken should be called on successful login")
 	}
@@ -620,6 +628,9 @@ func TestLoginUser_TokenGenerationError(t *testing.T) {
 
 	if fakeAuth.requestedEmail != "test@gmail.com" {
 		t.Errorf("GenerateToken requestedEmail: expected %q, got %q", "test@gmail.com", fakeAuth.requestedEmail)
+	}
+	if fakeAuth.requestedUserID != 42 {
+		t.Errorf("GenerateToken requestedUserID: expected 42, got %d", fakeAuth.requestedUserID)
 	}
 	if !fakeAuth.generateTokenCalled {
 		t.Error("GenerateToken should be called")

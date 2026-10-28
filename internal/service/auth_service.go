@@ -12,7 +12,8 @@ type AuthService struct {
 }
 
 type Claims struct {
-	Email string `json:"email"`
+	Email  string `json:"email"`
+	UserID int    `json:"user_id"`
 	jwt.RegisteredClaims
 }
 
@@ -22,12 +23,13 @@ func NewAuthService(secret string) *AuthService {
 	}
 }
 
-func (a *AuthService) GenerateToken(email string) (string, error) {
+func (a *AuthService) GenerateToken(email string, userID int) (string, error) {
 
 	expirationTime := time.Now().Add(24 * time.Hour)
 
 	claims := &Claims{
-		Email: email,
+		Email:  email,
+		UserID: userID,
 		RegisteredClaims: jwt.RegisteredClaims{
 			ExpiresAt: jwt.NewNumericDate(expirationTime),
 		},
@@ -41,7 +43,7 @@ func (a *AuthService) GenerateToken(email string) (string, error) {
 	return token.SignedString(a.jwtKey)
 }
 
-func (a *AuthService) ParseToken(tokenString string) (string, error) {
+func (a *AuthService) ParseToken(tokenString string) (string, int, error) {
 
 	token, err := jwt.ParseWithClaims(
 		tokenString,
@@ -53,18 +55,18 @@ func (a *AuthService) ParseToken(tokenString string) (string, error) {
 	)
 
 	if err != nil {
-		return "", err
+		return "", 0, err
 	}
 
 	if !token.Valid {
-		return "", errors.New("invalid token")
+		return "", 0, errors.New("invalid token")
 	}
 
 	claims, ok := token.Claims.(*Claims)
 
 	if !ok {
-		return "", errors.New("invalid claims")
+		return "", 0, errors.New("invalid claims")
 	}
 
-	return claims.Email, nil
+	return claims.Email, claims.UserID, nil
 }

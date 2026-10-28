@@ -10,7 +10,7 @@ import (
 
 func TestGenerateToken_Success(t *testing.T) {
 	svc := NewAuthService("test-secret")
-	token, err := svc.GenerateToken("test@gmail.com")
+	token, err := svc.GenerateToken("test@gmail.com", 42)
 	if err != nil {
 		t.Fatalf("GenerateToken failed: %v", err)
 	}
@@ -22,7 +22,7 @@ func TestGenerateToken_Success(t *testing.T) {
 
 func TestGenerateToken_UsesHS256(t *testing.T) {
 	svc := NewAuthService("test-secret")
-	token, err := svc.GenerateToken("test@gmail.com")
+	token, err := svc.GenerateToken("test@gmail.com", 42)
 	if err != nil {
 		t.Fatalf("GenerateToken failed: %v", err)
 	}
@@ -41,7 +41,7 @@ func TestGenerateToken_UsesHS256(t *testing.T) {
 
 func TestGenerateToken_ExpirationIs24Hours(t *testing.T) {
 	svc := NewAuthService("test-secret")
-	token, err := svc.GenerateToken("test@gmail.com")
+	token, err := svc.GenerateToken("test@gmail.com", 42)
 	if err != nil {
 		t.Fatalf("GenerateToken failed: %v", err)
 	}
@@ -70,11 +70,11 @@ func TestGenerateToken_ExpirationIs24Hours(t *testing.T) {
 func TestGenerateToken_DifferentSecretsDifferentTokens(t *testing.T) {
 	svcA := NewAuthService("secret-a")
 	svcB := NewAuthService("secret-b")
-	tokenA, err := svcA.GenerateToken("test@gmail.com")
+	tokenA, err := svcA.GenerateToken("test@gmail.com", 42)
 	if err != nil {
 		t.Fatalf("GenerateToken failed: %v", err)
 	}
-	tokenB, err := svcB.GenerateToken("test@gmail.com")
+	tokenB, err := svcB.GenerateToken("test@gmail.com", 42)
 	if err != nil {
 		t.Fatalf("GenerateToken failed: %v", err)
 	}
@@ -95,11 +95,11 @@ func TestGenerateToken_DifferentSecretsDifferentTokens(t *testing.T) {
 
 func TestParseToken_Success(t *testing.T) {
 	svc := NewAuthService("test-secret")
-	token, err := svc.GenerateToken("test@gmail.com")
+	token, err := svc.GenerateToken("test@gmail.com", 42)
 	if err != nil {
 		t.Fatalf("GenerateToken failed: %v", err)
 	}
-	email, err := svc.ParseToken(token)
+	email, userID, err := svc.ParseToken(token)
 	if err != nil {
 		t.Fatalf("ParseToken failed: %v", err)
 	}
@@ -107,16 +107,19 @@ func TestParseToken_Success(t *testing.T) {
 	if email != "test@gmail.com" {
 		t.Errorf("ParseToken got email %q, want %q", email, "test@gmail.com")
 	}
+	if userID != 42 {
+		t.Errorf("ParseToken got userID %d, want 42", userID)
+	}
 }
 
 func TestParseToken_InvalidSignature(t *testing.T) {
 	svcA := NewAuthService("secret-a")
 	svcB := NewAuthService("secret-b")
-	token, err := svcA.GenerateToken("test@gmail.com")
+	token, err := svcA.GenerateToken("test@gmail.com", 42)
 	if err != nil {
 		t.Fatalf("GenerateToken failed: %v", err)
 	}
-	_, err = svcB.ParseToken(token)
+	_, _, err = svcB.ParseToken(token)
 	if err == nil {
 		t.Fatal("expected error for token signed with different secret")
 	}
@@ -137,7 +140,7 @@ func TestParseToken_ExpiredToken(t *testing.T) {
 		t.Fatalf("failed to sign token: %v", err)
 	}
 
-	_, err = svc.ParseToken(tokenString)
+	_, _, err = svc.ParseToken(tokenString)
 	if err == nil {
 		t.Fatal("expected error for expired token")
 	}
@@ -159,7 +162,7 @@ func TestParseToken_Malformed(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			email, err := svc.ParseToken(tt.token)
+			email, _, err := svc.ParseToken(tt.token)
 			if err == nil {
 				t.Errorf("expected error for token %q", tt.token)
 			}
@@ -181,7 +184,7 @@ func TestParseToken_AlgNoneRejected(t *testing.T) {
 		t.Fatalf("failed to create alg=none token: %v", err)
 	}
 
-	_, err = svc.ParseToken(tokenString)
+	_, _, err = svc.ParseToken(tokenString)
 	if err == nil {
 		t.Fatal("expected error for alg=none token")
 	}
@@ -202,7 +205,7 @@ func TestParseToken_WrongAlg(t *testing.T) {
 		t.Fatalf("failed to sign token: %v", err)
 	}
 
-	_, err = svc.ParseToken(tokenString)
+	_, _, err = svc.ParseToken(tokenString)
 	if err == nil {
 		t.Fatal("expected error for HS512 token (only HS256 allowed)")
 	}

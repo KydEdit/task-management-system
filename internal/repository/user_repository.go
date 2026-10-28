@@ -38,7 +38,7 @@ func (r *UserRepository) RegisterUser(ctx context.Context, email, password strin
 
 	if err != nil {
 		if errors.As(err, &pgErr) {
-			if pgErr.Code == "23505" && pgErr.ConstraintName == "users_email_key" {
+			if pgErr.Code == "23505" {
 				return 0, models.ErrUserAlreadyExists
 			}
 		}

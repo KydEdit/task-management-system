@@ -19,24 +19,24 @@ type fakeTaskService struct {
 	requestedTask models.UserTasks
 
 	// Search
-	searchCalled         bool
-	requestedSearchEmail string
+	searchCalled          bool
+	requestedSearchUserID int
 
 	// SearchTask
-	searchTaskCalled   bool
-	requestedTaskEmail string
-	requestedTaskID    int
+	searchTaskCalled    bool
+	requestedTaskUserID int
+	requestedTaskID     int
 
 	// Delete
-	deleteCalled         bool
-	requestedDeleteEmail string
-	requestedDeleteID    int
+	deleteCalled          bool
+	requestedDeleteUserID int
+	requestedDeleteID     int
 
 	// Update
-	updateCalled         bool
-	requestedUpdateEmail string
-	requestedUpdateID    int
-	requestedUpdateTask  models.UserTasks
+	updateCalled          bool
+	requestedUpdateUserID int
+	requestedUpdateID     int
+	requestedUpdateTask   models.UserTasks
 
 	returnedResponse models.UserTasks
 	returnedList     []models.UserTasks
@@ -50,41 +50,41 @@ func (f *fakeTaskService) Create(ctx context.Context, task models.UserTasks) (mo
 	return f.returnedResponse, f.returnedError
 }
 
-func (f *fakeTaskService) Delete(ctx context.Context, email string, id int) error {
+func (f *fakeTaskService) Delete(ctx context.Context, userID int, id int) error {
 	f.deleteCalled = true
-	f.requestedDeleteEmail = email
+	f.requestedDeleteUserID = userID
 	f.requestedDeleteID = id
 
 	return f.returnedError
 }
 
-func (f *fakeTaskService) Search(ctx context.Context, email string) ([]models.UserTasks, error) {
+func (f *fakeTaskService) Search(ctx context.Context, userID int) ([]models.UserTasks, error) {
 	f.searchCalled = true
-	f.requestedSearchEmail = email
+	f.requestedSearchUserID = userID
 
 	return f.returnedList, f.returnedError
 }
 
-func (f *fakeTaskService) SearchTask(ctx context.Context, email string, id int) (models.UserTasks, error) {
+func (f *fakeTaskService) SearchTask(ctx context.Context, userID int, id int) (models.UserTasks, error) {
 	f.searchTaskCalled = true
-	f.requestedTaskEmail = email
+	f.requestedTaskUserID = userID
 	f.requestedTaskID = id
 
 	return f.returnedResponse, f.returnedError
 }
 
-func (f *fakeTaskService) Update(ctx context.Context, email string, id int, task models.UserTasks) error {
+func (f *fakeTaskService) Update(ctx context.Context, userID int, id int, task models.UserTasks) error {
 	f.updateCalled = true
-	f.requestedUpdateEmail = email
+	f.requestedUpdateUserID = userID
 	f.requestedUpdateID = id
 	f.requestedUpdateTask = task
 
 	return f.returnedError
 }
 
-func newRequestWithTask(httpMethod, target, email string, body io.Reader) *http.Request {
+func newRequestWithTask(httpMethod, target string, userID int, body io.Reader) *http.Request {
 	req := httptest.NewRequest(httpMethod, target, body)
-	ctx := context.WithValue(req.Context(), userContextKey, email)
+	ctx := context.WithValue(req.Context(), userIDContextKey, userID)
 	return req.WithContext(ctx)
 }
 
@@ -109,7 +109,7 @@ func TestCreateTask_Success(t *testing.T) {
 		t.Fatalf("failed to marshal request: %v", err)
 	}
 	body := bytes.NewReader(bodyBytes)
-	req := newRequestWithTask(http.MethodPost, "/tasks", "test@gmail.com", body)
+	req := newRequestWithTask(http.MethodPost, "/tasks", 42, body)
 
 	h.CreateTask(rec, req)
 
@@ -137,8 +137,8 @@ func TestCreateTask_Success(t *testing.T) {
 		t.Errorf("resp.Description: expected %q, got %q", "testDescription", resp.Description)
 	}
 
-	if fakeService.requestedTask.UserEmail != "test@gmail.com" {
-		t.Errorf("Create got UserEmail %q, want %q", fakeService.requestedTask.UserEmail, "test@gmail.com")
+	if fakeService.requestedTask.UserID != 42 {
+		t.Errorf("Create got UserID  %q, want %q", fakeService.requestedTask.UserID, 42)
 	}
 	if fakeService.requestedTask.Title != "testTitle" {
 		t.Errorf("Create got Title %q, want %q", fakeService.requestedTask.Title, "testTitle")
@@ -170,7 +170,7 @@ func TestCreateTask_Errors(t *testing.T) {
 			fakeService := &fakeTaskService{}
 			h := NewTaskHandler(fakeService)
 			rec := httptest.NewRecorder()
-			req := newRequestWithTask(http.MethodPost, "/tasks", "test@gmail.com", strings.NewReader(tt.body))
+			req := newRequestWithTask(http.MethodPost, "/tasks", 42, strings.NewReader(tt.body))
 
 			h.CreateTask(rec, req)
 
@@ -258,7 +258,7 @@ func TestCreateTask_ServiceError(t *testing.T) {
 		t.Fatalf("failed to marshal request: %v", err)
 	}
 	body := bytes.NewReader(bodyBytes)
-	req := newRequestWithTask(http.MethodPost, "/tasks", "test@gmail.com", body)
+	req := newRequestWithTask(http.MethodPost, "/tasks", 42, body)
 
 	h.CreateTask(rec, req)
 
@@ -311,7 +311,7 @@ func TestGetTask_Success(t *testing.T) {
 	}
 	h := NewTaskHandler(fakeService)
 	rec := httptest.NewRecorder()
-	req := newRequestWithTask(http.MethodGet, "/tasks", "test@gmail.com", nil)
+	req := newRequestWithTask(http.MethodGet, "/tasks", 42, nil)
 
 	h.GetTask(rec, req)
 
@@ -345,8 +345,8 @@ func TestGetTask_Success(t *testing.T) {
 		t.Errorf("resp[0].TaskCompleted: expected true, got %v", resp[0].TaskCompleted)
 	}
 
-	if fakeService.requestedSearchEmail != "test@gmail.com" {
-		t.Errorf("Search got UserEmail %q, want %q", fakeService.requestedSearchEmail, "test@gmail.com")
+	if fakeService.requestedSearchUserID != 42 {
+		t.Errorf("Search got UserID %q, want %q", fakeService.requestedSearchUserID, 42)
 	}
 
 	if !fakeService.searchCalled {
@@ -365,7 +365,7 @@ func TestGetTask_ByID_Success(t *testing.T) {
 	}
 	h := NewTaskHandler(fakeService)
 	rec := httptest.NewRecorder()
-	req := newRequestWithTask(http.MethodGet, "/tasks/{id}", "test@gmail.com", nil)
+	req := newRequestWithTask(http.MethodGet, "/tasks/{id}", 42, nil)
 	req.SetPathValue("id", "7")
 
 	h.GetTask(rec, req)
@@ -397,8 +397,8 @@ func TestGetTask_ByID_Success(t *testing.T) {
 		t.Errorf("resp.TaskCompleted: expected true, got %v", resp.TaskCompleted)
 	}
 
-	if fakeService.requestedTaskEmail != "test@gmail.com" {
-		t.Errorf("SearchTask got UserEmail %q, want %q", fakeService.requestedTaskEmail, "test@gmail.com")
+	if fakeService.requestedTaskUserID != 42 {
+		t.Errorf("SearchTask got UserID %q, want %q", fakeService.requestedTaskUserID, 52)
 	}
 	if fakeService.requestedTaskID != 7 {
 		t.Errorf("SearchTask got id %d, want %d", fakeService.requestedTaskID, 7)
@@ -448,7 +448,7 @@ func TestGetTask_InvalidID(t *testing.T) {
 	fakeService := &fakeTaskService{}
 	h := NewTaskHandler(fakeService)
 	rec := httptest.NewRecorder()
-	req := newRequestWithTask(http.MethodGet, "/tasks/{id}", "test@gmail.com", nil)
+	req := newRequestWithTask(http.MethodGet, "/tasks/{id}", 42, nil)
 	req.SetPathValue("id", "abc")
 
 	h.GetTask(rec, req)
@@ -486,7 +486,7 @@ func TestGetTask_ServiceError(t *testing.T) {
 	}
 	h := NewTaskHandler(fakeService)
 	rec := httptest.NewRecorder()
-	req := newRequestWithTask(http.MethodGet, "/tasks", "test@gmail.com", nil)
+	req := newRequestWithTask(http.MethodGet, "/tasks", 42, nil)
 
 	h.GetTask(rec, req)
 
@@ -533,7 +533,7 @@ func TestGetTask_Errors(t *testing.T) {
 			}
 			h := NewTaskHandler(fakeService)
 			rec := httptest.NewRecorder()
-			req := newRequestWithTask(http.MethodGet, "/tasks/{id}", "test@gmail.com", nil)
+			req := newRequestWithTask(http.MethodGet, "/tasks/{id}", 42, nil)
 			req.SetPathValue("id", "7")
 
 			h.GetTask(rec, req)
@@ -571,7 +571,7 @@ func TestDeleteTask_Success(t *testing.T) {
 	fakeService := &fakeTaskService{}
 	h := NewTaskHandler(fakeService)
 	rec := httptest.NewRecorder()
-	req := newRequestWithTask(http.MethodDelete, "/tasks/{id}", "test@gmail.com", nil)
+	req := newRequestWithTask(http.MethodDelete, "/tasks/{id}", 42, nil)
 	req.SetPathValue("id", "7")
 
 	h.DeleteTask(rec, req)
@@ -580,8 +580,8 @@ func TestDeleteTask_Success(t *testing.T) {
 		t.Fatalf("expected 204, got %d", rec.Code)
 	}
 
-	if fakeService.requestedDeleteEmail != "test@gmail.com" {
-		t.Errorf("Delete got UserEmail %q, want %q", fakeService.requestedDeleteEmail, "test@gmail.com")
+	if fakeService.requestedDeleteUserID != 42 {
+		t.Errorf("Delete got UserID %q, want %q", fakeService.requestedDeleteUserID, 42)
 	}
 	if fakeService.requestedDeleteID != 7 {
 		t.Errorf("Delete got id %d, want %d", fakeService.requestedDeleteID, 7)
@@ -628,7 +628,7 @@ func TestDeleteTask_InvalidID(t *testing.T) {
 	fakeService := &fakeTaskService{}
 	h := NewTaskHandler(fakeService)
 	rec := httptest.NewRecorder()
-	req := newRequestWithTask(http.MethodDelete, "/tasks/{id}", "test@gmail.com", nil)
+	req := newRequestWithTask(http.MethodDelete, "/tasks/{id}", 42, nil)
 	req.SetPathValue("id", "abc")
 
 	h.DeleteTask(rec, req)
@@ -673,7 +673,7 @@ func TestDeleteTask_Errors(t *testing.T) {
 			}
 			h := NewTaskHandler(fakeService)
 			rec := httptest.NewRecorder()
-			req := newRequestWithTask(http.MethodDelete, "/tasks/{id}", "test@gmail.com", nil)
+			req := newRequestWithTask(http.MethodDelete, "/tasks/{id}", 42, nil)
 			req.SetPathValue("id", "7")
 
 			h.DeleteTask(rec, req)
@@ -718,7 +718,7 @@ func TestEditTask_Success(t *testing.T) {
 		t.Fatalf("failed to marshal request: %v", err)
 	}
 	body := bytes.NewReader(bodyBytes)
-	req := newRequestWithTask(http.MethodPut, "/tasks/{id}", "test@gmail.com", body)
+	req := newRequestWithTask(http.MethodPut, "/tasks/{id}", 42, body)
 	req.SetPathValue("id", "7")
 
 	h.EditTask(rec, req)
@@ -727,8 +727,8 @@ func TestEditTask_Success(t *testing.T) {
 		t.Fatalf("expected 204, got %d", rec.Code)
 	}
 
-	if fakeService.requestedUpdateEmail != "test@gmail.com" {
-		t.Errorf("Update got UserEmail %q, want %q", fakeService.requestedUpdateEmail, "test@gmail.com")
+	if fakeService.requestedUpdateUserID != 42 {
+		t.Errorf("Update got UserID %q, want %q", fakeService.requestedUpdateUserID, 42)
 	}
 	if fakeService.requestedUpdateID != 7 {
 		t.Errorf("Update got id %d, want %d", fakeService.requestedUpdateID, 7)
@@ -757,7 +757,7 @@ func TestEditTask_InvalidJSON(t *testing.T) {
 			fakeService := &fakeTaskService{}
 			h := NewTaskHandler(fakeService)
 			rec := httptest.NewRecorder()
-			req := newRequestWithTask(http.MethodPut, "/tasks/{id}", "test@gmail.com", strings.NewReader(tt.body))
+			req := newRequestWithTask(http.MethodPut, "/tasks/{id}", 42, strings.NewReader(tt.body))
 
 			h.EditTask(rec, req)
 
@@ -843,7 +843,7 @@ func TestEditTask_InvalidID(t *testing.T) {
 		t.Fatalf("failed to marshal request: %v", err)
 	}
 	body := bytes.NewReader(bodyBytes)
-	req := newRequestWithTask(http.MethodPut, "/tasks/{id}", "test@gmail.com", body)
+	req := newRequestWithTask(http.MethodPut, "/tasks/{id}", 42, body)
 	req.SetPathValue("id", "abc")
 
 	h.EditTask(rec, req)
@@ -898,7 +898,7 @@ func TestEditTask_Errors(t *testing.T) {
 				t.Fatalf("failed to marshal request: %v", err)
 			}
 			body := bytes.NewReader(bodyBytes)
-			req := newRequestWithTask(http.MethodPut, "/tasks/{id}", "test@gmail.com", body)
+			req := newRequestWithTask(http.MethodPut, "/tasks/{id}", 42, body)
 			req.SetPathValue("id", "7")
 
 			h.EditTask(rec, req)

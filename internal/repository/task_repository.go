@@ -19,17 +19,17 @@ func NewTaskRepository(conn *pgx.Conn) *TaskRepository {
 	}
 }
 
-func (r *TaskRepository) CreateTask(ctx context.Context, title, description, email string, completed bool) (int, error) {
+func (r *TaskRepository) CreateTask(ctx context.Context, title, description string, userID int, completed bool) (int, error) {
 	var id int
 
 	err := r.conn.QueryRow(
 		ctx,
 		`
-		INSERT INTO tasks (title, description, user_email, completed) 
+		INSERT INTO tasks (title, description, user_id, completed) 
 		VALUES ($1, $2, $3, $4) 
 		RETURNING id
 		`,
-		title, description, email, completed,
+		title, description, userID, completed,
 	).Scan(&id)
 
 	if err != nil {
@@ -39,15 +39,15 @@ func (r *TaskRepository) CreateTask(ctx context.Context, title, description, ema
 	return id, nil
 }
 
-func (r *TaskRepository) GetAllByUser(ctx context.Context, email string) ([]models.UserTasks, error) {
+func (r *TaskRepository) GetAllByUser(ctx context.Context, userID int) ([]models.UserTasks, error) {
 
 	rows, err := r.conn.Query(
 		ctx,
 		`
-		SELECT id, title, description, user_email, completed 
+		SELECT id, title, description, user_id, completed 
 		FROM tasks 
-		WHERE user_email = $1
-		`, email,
+		WHERE user_id = $1
+		`, userID,
 	)
 
 	if err != nil {
@@ -60,7 +60,7 @@ func (r *TaskRepository) GetAllByUser(ctx context.Context, email string) ([]mode
 
 	for rows.Next() {
 		var task models.UserTasks
-		err := rows.Scan(&task.ID, &task.Title, &task.Description, &task.UserEmail, &task.TaskCompleted)
+		err := rows.Scan(&task.ID, &task.Title, &task.Description, &task.UserID, &task.TaskCompleted)
 		if err != nil {
 			return nil, err
 		}
@@ -74,22 +74,22 @@ func (r *TaskRepository) GetAllByUser(ctx context.Context, email string) ([]mode
 	return tasks, nil
 }
 
-func (r *TaskRepository) GetByID(ctx context.Context, email string, id int) (models.UserTasks, error) {
+func (r *TaskRepository) GetByID(ctx context.Context, userID int, id int) (models.UserTasks, error) {
 	var task models.UserTasks
 
 	err := r.conn.QueryRow(
 		ctx,
 		`
-		SELECT id, title, description, user_email, completed 
+		SELECT id, title, description, user_id, completed 
 		FROM tasks 
-		WHERE user_email = $1 AND id = $2
+		WHERE user_id = $1 AND id = $2
 		`,
-		email, id,
+		userID, id,
 	).Scan(
 		&task.ID,
 		&task.Title,
 		&task.Description,
-		&task.UserEmail,
+		&task.UserID,
 		&task.TaskCompleted,
 	)
 
@@ -103,15 +103,15 @@ func (r *TaskRepository) GetByID(ctx context.Context, email string, id int) (mod
 	return task, nil
 }
 
-func (r *TaskRepository) DeleteByID(ctx context.Context, email string, id int) error {
+func (r *TaskRepository) DeleteByID(ctx context.Context, userID int, id int) error {
 
 	commandTag, err := r.conn.Exec(
 		ctx,
 		`
 		DELETE FROM tasks 
-		WHERE user_email = $1 AND id = $2
+		WHERE user_id = $1 AND id = $2
 		`,
-		email, id,
+		userID, id,
 	)
 
 	if err != nil {
@@ -125,15 +125,15 @@ func (r *TaskRepository) DeleteByID(ctx context.Context, email string, id int) e
 	return nil
 }
 
-func (r *TaskRepository) EditByID(ctx context.Context, email string, id int, task models.UserTasks) error {
+func (r *TaskRepository) EditByID(ctx context.Context, userID int, id int, task models.UserTasks) error {
 
 	commandTag, err := r.conn.Exec(
 		ctx,
 		`
 		UPDATE tasks SET title = $1, description = $2, completed = $3 
-		WHERE user_email = $4 AND id = $5
+		WHERE user_id = $4 AND id = $5
 		`,
-		task.Title, task.Description, task.TaskCompleted, email, id,
+		task.Title, task.Description, task.TaskCompleted, userID, id,
 	)
 
 	if err != nil {

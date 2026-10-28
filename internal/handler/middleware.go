@@ -8,7 +8,10 @@ import (
 
 type contextKey string
 
-const userContextKey = contextKey("userEmail")
+const (
+	userContextKey   = contextKey("userEmail")
+	userIDContextKey = contextKey("userID")
+)
 
 func AuthMiddleware(
 	auth AuthService,
@@ -28,7 +31,7 @@ func AuthMiddleware(
 		}
 		tokenString := parts[1]
 
-		email, err := auth.ParseToken(tokenString)
+		email, userID, err := auth.ParseToken(tokenString)
 		if err != nil {
 			writeError(w, http.StatusUnauthorized, "invalid token")
 			return
@@ -38,6 +41,10 @@ func AuthMiddleware(
 			r.Context(),
 			userContextKey,
 			email,
+		)
+		ctx = context.WithValue(
+			ctx, userIDContextKey,
+			userID,
 		)
 
 		next(

@@ -35,7 +35,7 @@ func (s *TaskUserService) Create(ctx context.Context, task models.UserTasks) (mo
 		return models.UserTasks{}, err
 	}
 
-	id, err := s.repo.CreateTask(ctx, task.Title, task.Description, task.UserEmail, task.TaskCompleted)
+	id, err := s.repo.CreateTask(ctx, task.Title, task.Description, task.UserID, task.TaskCompleted)
 	if err != nil {
 		return models.UserTasks{}, err
 	}
@@ -44,9 +44,9 @@ func (s *TaskUserService) Create(ctx context.Context, task models.UserTasks) (mo
 	return task, nil
 }
 
-func (s *TaskUserService) Search(ctx context.Context, email string) ([]models.UserTasks, error) {
+func (s *TaskUserService) Search(ctx context.Context, userID int) ([]models.UserTasks, error) {
 
-	tasks, err := s.repo.GetAllByUser(ctx, email)
+	tasks, err := s.repo.GetAllByUser(ctx, userID)
 	if err != nil {
 		return nil, err
 	}
@@ -54,9 +54,9 @@ func (s *TaskUserService) Search(ctx context.Context, email string) ([]models.Us
 	return tasks, nil
 }
 
-func (s *TaskUserService) SearchTask(ctx context.Context, email string, id int) (models.UserTasks, error) {
+func (s *TaskUserService) SearchTask(ctx context.Context, userID int, id int) (models.UserTasks, error) {
 
-	specificTask, err := s.repo.GetByID(ctx, email, id)
+	specificTask, err := s.repo.GetByID(ctx, userID, id)
 	if err != nil {
 		return models.UserTasks{}, err
 	}
@@ -64,16 +64,16 @@ func (s *TaskUserService) SearchTask(ctx context.Context, email string, id int) 
 	return specificTask, nil
 }
 
-func (s *TaskUserService) Delete(ctx context.Context, email string, id int) error {
-	return s.repo.DeleteByID(ctx, email, id)
+func (s *TaskUserService) Delete(ctx context.Context, userID int, id int) error {
+	return s.repo.DeleteByID(ctx, userID, id)
 
 }
 
-func (s *TaskUserService) Update(ctx context.Context, email string, id int, task models.UserTasks) error {
+func (s *TaskUserService) Update(ctx context.Context, userID int, id int, task models.UserTasks) error {
 	if err := validateTask(&task); err != nil {
 		return err
 	}
 
-	return s.repo.EditByID(ctx, email, id, task)
+	return s.repo.EditByID(ctx, userID, id, task)
 
 }

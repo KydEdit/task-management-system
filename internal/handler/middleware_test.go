@@ -10,14 +10,19 @@ import (
 )
 
 func TestAuthMiddleware_Success(t *testing.T) {
-	fakeAuth := &fakeAuthService{returnedClaims: "test@gmail.com"}
+	fakeAuth := &fakeAuthService{
+		returnedClaims: "test@gmail.com",
+		returnedUserID: 42,
+	}
 
 	var nextCalled bool
 	var capturedEmail string
+	var capturedUserID int
 
 	next := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		nextCalled = true
 		capturedEmail, _ = r.Context().Value(userContextKey).(string)
+		capturedUserID, _ = r.Context().Value(userIDContextKey).(int)
 		w.WriteHeader(http.StatusOK)
 	})
 
@@ -34,6 +39,9 @@ func TestAuthMiddleware_Success(t *testing.T) {
 	}
 	if capturedEmail != "test@gmail.com" {
 		t.Errorf("email in context: expected %q, got %q", "test@gmail.com", capturedEmail)
+	}
+	if capturedUserID != 42 {
+		t.Errorf("userID in context: expected 42, got %d", capturedUserID)
 	}
 
 	if !fakeAuth.parseTokenCalled {

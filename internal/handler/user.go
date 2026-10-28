@@ -83,7 +83,7 @@ func (h *UserHandler) LoginUser(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	token, err := h.auth.GenerateToken(foundUser.Email)
+	token, err := h.auth.GenerateToken(foundUser.Email, foundUser.ID)
 	if err != nil {
 		writeError(w, http.StatusInternalServerError, "could not generate token")
 		return

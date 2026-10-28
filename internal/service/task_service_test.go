@@ -13,72 +13,72 @@ type fakeTaskRepository struct {
 	createCalled             bool
 	requestedCreateTitle     string
 	requestedCreateDesc      string
-	requestedCreateEmail     string
+	requestedCreateUserID    int // ← было Email
 	requestedCreateCompleted bool
 	returnedCreateID         int
 
 	// Search
-	searchCalled         bool
-	requestedSearchEmail string
-	returnedList         []models.UserTasks
+	searchCalled          bool
+	requestedSearchUserID int // ← было Email
+	returnedList          []models.UserTasks
 
 	// SearchTask
-	searchTaskCalled   bool
-	requestedTaskEmail string
-	requestedTaskID    int
-	returnedTask       models.UserTasks
+	searchTaskCalled    bool
+	requestedTaskUserID int // ← было Email
+	requestedTaskID     int
+	returnedTask        models.UserTasks
 
 	// Delete
-	deleteCalled         bool
-	requestedDeleteEmail string
-	requestedDeleteID    int
+	deleteCalled          bool
+	requestedDeleteUserID int // ← было Email
+	requestedDeleteID     int
 
 	// Update
-	updateCalled         bool
-	requestedUpdateEmail string
-	requestedUpdateID    int
-	requestedUpdateTask  models.UserTasks
+	updateCalled          bool
+	requestedUpdateUserID int // ← было Email
+	requestedUpdateID     int
+	requestedUpdateTask   models.UserTasks
 
 	returnedError error
 }
 
-func (f *fakeTaskRepository) CreateTask(ctx context.Context, title string, description string, email string, completed bool) (int, error) {
+func (f *fakeTaskRepository) CreateTask(ctx context.Context, title string, description string, userID int, completed bool) (int, error) {
 	f.createCalled = true
 	f.requestedCreateTitle = title
 	f.requestedCreateDesc = description
-	f.requestedCreateEmail = email
+	f.requestedCreateUserID = userID
 	f.requestedCreateCompleted = completed
 
 	return f.returnedCreateID, f.returnedError
 }
 
-func (f *fakeTaskRepository) DeleteByID(ctx context.Context, email string, id int) error {
+func (f *fakeTaskRepository) DeleteByID(ctx context.Context, userID int, id int) error {
 	f.deleteCalled = true
-	f.requestedDeleteEmail = email
+	f.requestedDeleteUserID = userID
 	f.requestedDeleteID = id
 
 	return f.returnedError
 }
 
-func (f *fakeTaskRepository) EditByID(ctx context.Context, email string, id int, task models.UserTasks) error {
+func (f *fakeTaskRepository) EditByID(ctx context.Context, userID int, id int, task models.UserTasks) error {
 	f.updateCalled = true
-	f.requestedUpdateEmail = email
+	f.requestedUpdateUserID = userID
 	f.requestedUpdateID = id
 	f.requestedUpdateTask = task
 
 	return f.returnedError
 }
 
-func (f *fakeTaskRepository) GetAllByUser(ctx context.Context, email string) ([]models.UserTasks, error) {
+func (f *fakeTaskRepository) GetAllByUser(ctx context.Context, userID int) ([]models.UserTasks, error) {
 	f.searchCalled = true
-	f.requestedSearchEmail = email
+	f.requestedSearchUserID = userID
 
 	return f.returnedList, f.returnedError
 }
 
-func (f *fakeTaskRepository) GetByID(ctx context.Context, email string, id int) (models.UserTasks, error) {
+func (f *fakeTaskRepository) GetByID(ctx context.Context, userID int, id int) (models.UserTasks, error) {
 	f.searchTaskCalled = true
-	f.requestedTaskEmail = email
+	f.requestedTaskUserID = userID
 	f.requestedTaskID = id
 
 	return f.returnedTask, f.returnedError
@@ -91,7 +91,7 @@ func TestCreate_Success(t *testing.T) {
 	resp, err := svc.Create(context.Background(), models.UserTasks{
 		Title:         "testTitle",
 		Description:   "testDescription",
-		UserEmail:     "test@gmail.com",
+		UserID:        42,
 		TaskCompleted: true,
 	})
 
@@ -109,8 +109,8 @@ func TestCreate_Success(t *testing.T) {
 	if fakeTaskRepo.requestedCreateDesc != "testDescription" {
 		t.Errorf("fakeTaskRepo.requestedCreateDesc: expected %q, got %q", "testDescription", fakeTaskRepo.requestedCreateDesc)
 	}
-	if fakeTaskRepo.requestedCreateEmail != "test@gmail.com" {
-		t.Errorf("fakeTaskRepo.requestedCreateEmail: expected %q, got %q", "test@gmail.com", fakeTaskRepo.requestedCreateEmail)
+	if fakeTaskRepo.requestedCreateUserID != 42 {
+		t.Errorf("fakeTaskRepo.requestedCreateUserID: expected %q, got %q", 42, fakeTaskRepo.requestedCreateUserID)
 	}
 	if fakeTaskRepo.requestedCreateCompleted != true {
 		t.Errorf("fakeTaskRepo.requestedCreateCompleted: expected true, got %v", fakeTaskRepo.requestedCreateCompleted)
@@ -211,7 +211,7 @@ func TestCreate_RepositoryError(t *testing.T) {
 	_, err := svc.Create(context.Background(), models.UserTasks{
 		Title:         "testTitle",
 		Description:   "testDescription",
-		UserEmail:     "test@gmail.com",
+		UserID:        42,
 		TaskCompleted: true,
 	})
 
@@ -235,28 +235,28 @@ func TestSearch_Success(t *testing.T) {
 				ID:            42,
 				Title:         "testTitle42",
 				Description:   "testDescription42",
-				UserEmail:     "test@gmail.com",
+				UserID:        42,
 				TaskCompleted: true,
 			},
 			{
 				ID:            43,
 				Title:         "testTitle43",
 				Description:   "testDescription43",
-				UserEmail:     "test@gmail.com",
+				UserID:        42,
 				TaskCompleted: true,
 			},
 			{
 				ID:            44,
 				Title:         "testTitle44",
 				Description:   "testDescription44",
-				UserEmail:     "test@gmail.com",
+				UserID:        42,
 				TaskCompleted: true,
 			},
 		},
 	}
 	svc := NewTaskUserService(fakeTaskRepo)
 
-	resp, err := svc.Search(context.Background(), "test@gmail.com")
+	resp, err := svc.Search(context.Background(), 42)
 
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
@@ -271,15 +271,15 @@ func TestSearch_Success(t *testing.T) {
 	if resp[0].Description != "testDescription42" {
 		t.Errorf("resp[0].Description: expected %q, got %q", "testDescription42", resp[0].Description)
 	}
-	if resp[0].UserEmail != "test@gmail.com" {
-		t.Errorf("resp[0].UserEmail: expected %q, got %q", "test@gmail.com", resp[0].UserEmail)
+	if resp[0].UserID != 42 {
+		t.Errorf("resp[0].UserID : expected %q, got %q", 42, resp[0].UserID)
 	}
 	if resp[0].TaskCompleted != true {
 		t.Errorf("resp[0].TaskCompleted: expected true, got %v", resp[0].TaskCompleted)
 	}
 
-	if fakeTaskRepo.requestedSearchEmail != "test@gmail.com" {
-		t.Errorf("fakeTaskRepo.requestedSearchEmail: expected %q, got %q", "test@gmail.com", fakeTaskRepo.requestedSearchEmail)
+	if fakeTaskRepo.requestedSearchUserID != 42 {
+		t.Errorf("fakeTaskRepo.requestedSearchUserID: expected %q, got %q", 42, fakeTaskRepo.requestedSearchUserID)
 	}
 	if !fakeTaskRepo.searchCalled {
 		t.Error("GetAllByUser should be called")
@@ -292,7 +292,7 @@ func TestSearch_RepositoryError(t *testing.T) {
 	fakeTaskRepo := &fakeTaskRepository{returnedError: dbErr}
 	svc := NewTaskUserService(fakeTaskRepo)
 
-	_, err := svc.Search(context.Background(), "test@gmail.com")
+	_, err := svc.Search(context.Background(), 42)
 
 	if err == nil {
 		t.Fatal("expected error, got nil")
@@ -313,13 +313,13 @@ func TestSearchTask_Success(t *testing.T) {
 			ID:            42,
 			Title:         "testTitle42",
 			Description:   "testDescription42",
-			UserEmail:     "test@gmail.com",
+			UserID:        42,
 			TaskCompleted: true,
 		},
 	}
 	svc := NewTaskUserService(fakeTaskRepo)
 
-	resp, err := svc.SearchTask(context.Background(), "test@gmail.com", 42)
+	resp, err := svc.SearchTask(context.Background(), 42, 42)
 
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
@@ -334,15 +334,15 @@ func TestSearchTask_Success(t *testing.T) {
 	if resp.Description != "testDescription42" {
 		t.Errorf("resp.Description: expected %q, got %q", "testDescription42", resp.Description)
 	}
-	if resp.UserEmail != "test@gmail.com" {
-		t.Errorf("resp.UserEmail: expected %q, got %q", "test@gmail.com", resp.UserEmail)
+	if resp.UserID != 42 {
+		t.Errorf("resp.UserID : expected %q, got %q", 42, resp.UserID)
 	}
 	if resp.TaskCompleted != true {
 		t.Errorf("resp.TaskCompleted: expected true, got %v", resp.TaskCompleted)
 	}
 
-	if fakeTaskRepo.requestedTaskEmail != "test@gmail.com" {
-		t.Errorf("fakeTaskRepo.requestedTaskEmail: expected %q, got %q", "test@gmail.com", fakeTaskRepo.requestedTaskEmail)
+	if fakeTaskRepo.requestedTaskUserID != 42 {
+		t.Errorf("fakeTaskRepo.requestedTaskUserID: expected %q, got %q", 42, fakeTaskRepo.requestedTaskUserID)
 	}
 	if fakeTaskRepo.requestedTaskID != 42 {
 		t.Errorf("fakeTaskRepo.requestedTaskID: expected 42, got %d", fakeTaskRepo.requestedTaskID)
@@ -366,7 +366,7 @@ func TestSearchTask_RepositoryErrors(t *testing.T) {
 			fakeTaskRepo := &fakeTaskRepository{returnedError: tt.serviceErr}
 			svc := NewTaskUserService(fakeTaskRepo)
 
-			_, err := svc.SearchTask(context.Background(), "test@gmail.com", 42)
+			_, err := svc.SearchTask(context.Background(), 42, 42)
 
 			if err == nil {
 				t.Fatal("expected error, got nil")
@@ -387,14 +387,14 @@ func TestDelete_Success(t *testing.T) {
 	fakeTaskRepo := &fakeTaskRepository{}
 	svc := NewTaskUserService(fakeTaskRepo)
 
-	err := svc.Delete(context.Background(), "test@gmail.com", 42)
+	err := svc.Delete(context.Background(), 42, 42)
 
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
 
-	if fakeTaskRepo.requestedDeleteEmail != "test@gmail.com" {
-		t.Errorf("fakeTaskRepo.requestedDeleteEmail: expected %q, got %q", "test@gmail.com", fakeTaskRepo.requestedDeleteEmail)
+	if fakeTaskRepo.requestedDeleteUserID != 42 {
+		t.Errorf("fakeTaskRepo.requestedDeleteUserID: expected %q, got %q", 42, fakeTaskRepo.requestedDeleteUserID)
 	}
 	if fakeTaskRepo.requestedDeleteID != 42 {
 		t.Errorf("fakeTaskRepo.requestedDeleteID: expected 42, got %d", fakeTaskRepo.requestedDeleteID)
@@ -418,7 +418,7 @@ func TestDelete_RepositoryErrors(t *testing.T) {
 			fakeTaskRepo := &fakeTaskRepository{returnedError: tt.serviceErr}
 			svc := NewTaskUserService(fakeTaskRepo)
 
-			err := svc.Delete(context.Background(), "test@gmail.com", 42)
+			err := svc.Delete(context.Background(), 42, 42)
 
 			if err == nil {
 				t.Fatal("expected error, got nil")
@@ -441,18 +441,18 @@ func TestUpdate_Success(t *testing.T) {
 	task := models.UserTasks{
 		Title:         "testTitle42",
 		Description:   "testDescription42",
-		UserEmail:     "test@gmail.com",
+		UserID:        42,
 		TaskCompleted: true,
 	}
 
-	err := svc.Update(context.Background(), "test@gmail.com", 42, task)
+	err := svc.Update(context.Background(), 42, 42, task)
 
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
 
-	if fakeTaskRepo.requestedUpdateEmail != "test@gmail.com" {
-		t.Errorf("fakeTaskRepo.requestedUpdateEmail: expected %q, got %q", "test@gmail.com", fakeTaskRepo.requestedUpdateEmail)
+	if fakeTaskRepo.requestedUpdateUserID != 42 {
+		t.Errorf("fakeTaskRepo.requestedUpdateUserID: expected %q, got %q", 42, fakeTaskRepo.requestedUpdateUserID)
 	}
 	if fakeTaskRepo.requestedUpdateID != 42 {
 		t.Errorf("fakeTaskRepo.requestedUpdateID: expected 42, got %d", fakeTaskRepo.requestedUpdateID)
@@ -526,7 +526,7 @@ func TestUpdate_Validation(t *testing.T) {
 			fakeRepo := &fakeTaskRepository{}
 			svc := NewTaskUserService(fakeRepo)
 
-			err := svc.Update(context.Background(), "test@gmail.com", 42, tt.task)
+			err := svc.Update(context.Background(), 42, 42, tt.task)
 
 			if err == nil {
 				t.Fatal("expected error, got nil")
@@ -557,10 +557,10 @@ func TestUpdate_RepositoryErrors(t *testing.T) {
 			fakeTaskRepo := &fakeTaskRepository{returnedError: tt.serviceErr}
 			svc := NewTaskUserService(fakeTaskRepo)
 
-			err := svc.Update(context.Background(), "test@gmail.com", 42, models.UserTasks{
+			err := svc.Update(context.Background(), 42, 42, models.UserTasks{
 				Title:         "testTitle42",
 				Description:   "testDescription42",
-				UserEmail:     "test@gmail.com",
+				UserID:        42,
 				TaskCompleted: true,
 			})
 
