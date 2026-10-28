@@ -8,6 +8,7 @@ import (
 	"task-manager-api/internal/handler"
 	"task-manager-api/internal/repository"
 	"task-manager-api/internal/service"
+	"time"
 
 	"github.com/jackc/pgx/v5"
 )
@@ -44,51 +45,75 @@ func main() {
 	taskHandler := handler.NewTaskHandler(taskService)
 
 	http.HandleFunc("/health", handler.HealthHandler)
+
 	http.HandleFunc(
 		"POST /users/register",
-		userHandler.RegisterUser,
+		handler.TimeoutMiddleware(
+			5*time.Second,
+			userHandler.RegisterUser,
+		),
 	)
+
 	http.HandleFunc(
 		"POST /users/login",
-		userHandler.LoginUser,
+		handler.TimeoutMiddleware(
+			5*time.Second, // bcrypt
+			userHandler.LoginUser,
+		),
 	)
+
 	http.HandleFunc(
 		"GET /users/me",
-		handler.AuthMiddleware(
-			authService,
-			userHandler.GetMe,
+		handler.TimeoutMiddleware(
+			3*time.Second,
+			handler.AuthMiddleware(
+				authService,
+				userHandler.GetMe,
+			),
 		),
 	)
 
 	http.HandleFunc(
 		"POST /tasks",
-		handler.AuthMiddleware(
-			authService,
-			taskHandler.CreateTask,
+		handler.TimeoutMiddleware(
+			3*time.Second,
+			handler.AuthMiddleware(
+				authService,
+				taskHandler.CreateTask,
+			),
 		),
 	)
 
 	http.HandleFunc(
 		"GET /tasks",
-		handler.AuthMiddleware(
-			authService,
-			taskHandler.GetTask,
+		handler.TimeoutMiddleware(
+			3*time.Second,
+			handler.AuthMiddleware(
+				authService,
+				taskHandler.GetTask,
+			),
 		),
 	)
 
 	http.HandleFunc(
 		"PUT /tasks/{id}",
-		handler.AuthMiddleware(
-			authService,
-			taskHandler.EditTask,
+		handler.TimeoutMiddleware(
+			3*time.Second,
+			handler.AuthMiddleware(
+				authService,
+				taskHandler.EditTask,
+			),
 		),
 	)
 
 	http.HandleFunc(
 		"DELETE /tasks/{id}",
-		handler.AuthMiddleware(
-			authService,
-			taskHandler.DeleteTask,
+		handler.TimeoutMiddleware(
+			3*time.Second,
+			handler.AuthMiddleware(
+				authService,
+				taskHandler.DeleteTask,
+			),
 		),
 	)
 
