@@ -465,6 +465,84 @@ func TestUpdate_Success(t *testing.T) {
 	}
 }
 
+func TestUpdate_Validation(t *testing.T) {
+	tests := []struct {
+		name        string
+		task        models.UserTasks
+		expectedErr error
+	}{
+		{
+			name: "empty title",
+			task: models.UserTasks{
+				Title:       "",
+				Description: "desc",
+			},
+			expectedErr: models.ErrInvalidTitle,
+		},
+		{
+			name: "title too long",
+			task: models.UserTasks{
+				Title:       strings.Repeat("a", 256),
+				Description: "desc",
+			},
+			expectedErr: models.ErrInvalidTitle,
+		},
+		{
+			name: "empty description",
+			task: models.UserTasks{
+				Title:       "title",
+				Description: "",
+			},
+			expectedErr: models.ErrInvalidDescription,
+		},
+		{
+			name: "description too long",
+			task: models.UserTasks{
+				Title:       "title",
+				Description: strings.Repeat("a", 1001),
+			},
+			expectedErr: models.ErrInvalidDescription,
+		},
+		{
+			name: "whitespace title",
+			task: models.UserTasks{
+				Title:       "   ",
+				Description: "desc",
+			},
+			expectedErr: models.ErrInvalidTitle,
+		},
+		{
+			name: "whitespace description",
+			task: models.UserTasks{
+				Title:       "title",
+				Description: "   ",
+			},
+			expectedErr: models.ErrInvalidDescription,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			fakeRepo := &fakeTaskRepository{}
+			svc := NewTaskUserService(fakeRepo)
+
+			err := svc.Update(context.Background(), "test@gmail.com", 42, tt.task)
+
+			if err == nil {
+				t.Fatal("expected error, got nil")
+			}
+
+			if !errors.Is(err, tt.expectedErr) {
+				t.Errorf("expected %v, got %v", tt.expectedErr, err)
+			}
+
+			if fakeRepo.createCalled {
+				t.Error("EditByID should not be called for invalid input")
+			}
+		})
+	}
+}
+
 func TestUpdate_RepositoryErrors(t *testing.T) {
 	tests := []struct {
 		name       string
